@@ -5,12 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Node Defender: Advanced</title>
 <style>
-    /* 画面のスクロールやズームを防止し、タップ操作を安定させる */
     body { margin: 0; overflow: hidden; background: #030308; color: #e0e0ff; font-family: 'Courier New', Courier, monospace; user-select: none; -webkit-user-select: none; touch-action: none; }
     canvas { display: block; }
     #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; }
     
-    /* サイドバーの基本設定 */
     #sidebar { width: 320px; background: rgba(5, 5, 15, 0.95); border-right: 1px solid #00ffff; display: flex; flex-direction: column; pointer-events: auto; z-index: 10; height: 100vh; box-shadow: 2px 0 15px rgba(0, 255, 255, 0.1); }
     #stats { padding: 15px; border-bottom: 1px solid #1a334d; background: #0a0a1a; }
     .stat-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-bottom: 8px; color: #00ffff; letter-spacing: 1px; }
@@ -25,14 +23,19 @@
     #buildMenu::-webkit-scrollbar-thumb { background: #00ffff; }
     
     .node-card { background: #080814; border: 1px solid #1a334d; border-left: 4px solid #00ffff; margin-bottom: 10px; padding: 10px; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
-    .node-card:hover, .node-card.selected { background: #112233; border-color: #00ffff; box-shadow: 0 0 10px rgba(0,255,255,0.2); }
+    .node-card:hover { background: #112233; border-color: #00ffff; box-shadow: 0 0 10px rgba(0,255,255,0.2); }
+    /* 選択中のカードのスタイル */
+    .node-card.selected { background: #112233; border-color: #00ffff !important; box-shadow: 0 0 15px rgba(0,255,255,0.4); }
+    /* お金が足りないカードのスタイル */
+    .node-card.disabled { opacity: 0.4; border-color: #333; }
+    .node-card.disabled.selected { border-color: #00ffff !important; opacity: 0.8; }
+    
     .n-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
     .n-name { font-weight: bold; font-size: 14px; color: #fff; text-shadow: 0 0 3px currentColor; }
     .n-cost { color: #ffea00; font-weight: bold; font-size: 13px; text-shadow: 0 0 5px rgba(255,234,0,0.5); }
     .n-desc { font-size: 11px; color: #aaa; margin-bottom: 5px; line-height: 1.3; }
     .n-stats { font-size: 10px; color: #0ff; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; background: rgba(0,255,255,0.05); padding: 4px; }
     
-    /* アクションパネル */
     #actionPanel { position: absolute; bottom: 20px; left: 340px; background: rgba(5, 5, 15, 0.95); padding: 20px; border: 1px solid #00ffff; pointer-events: auto; display: none; z-index: 10; min-width: 250px; box-shadow: 0 0 25px rgba(0, 255, 255, 0.15); backdrop-filter: blur(5px); }
     #actionPanel h3 { margin: 0 0 15px 0; color: #00ffff; border-bottom: 1px solid #1a334d; padding-bottom: 5px; font-size: 16px; }
     .ap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; font-size: 12px; }
@@ -42,10 +45,9 @@
     .btn-sell { border-color: #ff3366; color: #ff3366; }
     .btn-sell:hover:not(:disabled) { background: #ff3366; color: #000; box-shadow: 0 0 15px #ff3366; }
     
-    /* スマホ画面向けのレイアウト調整 (画面幅が768px以下の場合) */
     @media (max-width: 768px) {
-        #sidebar { width: 140px; } /* スマホではサイドバーを細くしてCanvas領域を確保 */
-        .n-desc { display: none; } /* 説明文を隠して省スペース化 */
+        #sidebar { width: 140px; }
+        .n-desc { display: none; }
         .stat-row { font-size: 12px; }
         .n-name { font-size: 11px; }
         #actionPanel { left: 150px; bottom: 10px; padding: 10px; min-width: 180px; }
@@ -95,7 +97,6 @@ let cols, rows;
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    // 画面幅に応じてサイドバーの幅（クリック無効領域）を計算
     sidebarWidth = window.innerWidth <= 768 ? 140 : 320;
     cols = Math.floor(canvas.width / gridSize);
     rows = Math.floor(canvas.height / gridSize);
@@ -109,7 +110,6 @@ function updateCorePos() {
     corePos.y = Math.floor(canvas.height / 2 / gridSize) * gridSize + gridSize / 2;
 }
 
-// 防衛機器データ
 const NODE_TYPES = {
     blaster:  { name: 'BLASTER', cost: 50,  dmg: 12, range: 120, rate: 40,  color: '#ffffff', type: 'normal', desc: '安価で標準的な連射砲。' },
     vulcan:   { name: 'VULCAN',  cost: 140, dmg: 4,  range: 100, rate: 6,   color: '#ffff00', type: 'normal', desc: '超高速連射。ダメージは低いが弾幕を張る。' },
@@ -122,11 +122,7 @@ const NODE_TYPES = {
     miner:    { name: 'MINER',   cost: 250, dmg: 0,  range: 0,   rate: 0,   color: '#ffaa00', type: 'income', value: 40, desc: '毎ウェーブ終了時クレジット生成。' }
 };
 
-let state = {
-    wave: 1, coreHp: 1000, coins: 600, waveActive: false,
-    nodes: [], enemies: [], bullets: [], particles: []
-};
-
+let state = { wave: 1, coreHp: 1000, coins: 600, waveActive: false, nodes: [], enemies: [], bullets: [], particles: [] };
 let selectedBuildType = null;
 let selectedNode = null;
 let frame = 0;
@@ -148,18 +144,17 @@ function updateUI() {
     els.core.innerText = Math.floor(state.coreHp);
     els.coins.innerText = Math.floor(state.coins);
     
+    // お金が足りないカードに .disabled クラスを付与（色はCSSで管理）
     document.querySelectorAll('.node-card').forEach(card => {
         const cost = parseInt(card.dataset.cost);
-        if(state.coins < cost) {
-            card.style.opacity = '0.4'; card.style.borderColor = '#333';
-        } else {
-            card.style.opacity = '1'; card.style.borderColor = card.classList.contains('selected') ? '#00ffff' : '#1a334d';
-        }
+        if(state.coins < cost) card.classList.add('disabled');
+        else card.classList.remove('disabled');
     });
 
     if(state.coreHp <= 0) alert('GAME OVER! ページをリロードしてください。');
 }
 
+// 機器メニューの生成
 Object.keys(NODE_TYPES).forEach(key => {
     const t = NODE_TYPES[key];
     const card = document.createElement('div');
@@ -167,10 +162,17 @@ Object.keys(NODE_TYPES).forEach(key => {
     card.innerHTML = `<div class="n-header"><span class="n-name" style="color:${t.color}">${t.name}</span><span class="n-cost">$${t.cost}</span></div>
                       <div class="n-desc">${t.desc}</div>
                       <div class="n-stats"><div>DMG <span>${t.dmg}</span></div><div>RNG <span>${t.range}</span></div></div>`;
+    
+    // クリック時の機器切り替え処理
     card.onclick = () => {
         document.querySelectorAll('.node-card').forEach(b => b.classList.remove('selected'));
-        if(selectedBuildType === key) { selectedBuildType = null; } 
-        else { card.classList.add('selected'); selectedBuildType = key; closeActionPanel(); }
+        if(selectedBuildType === key) { 
+            selectedBuildType = null; 
+        } else { 
+            card.classList.add('selected'); 
+            selectedBuildType = key; 
+            closeActionPanel(); 
+        }
     };
     els.buildMenu.appendChild(card);
 });
@@ -218,14 +220,18 @@ els.btnNext.onclick = () => {
 
 function spawnEnemy() {
     const angle = Math.random() * Math.PI * 2;
-    const dist = Math.max(canvas.width, canvas.height) + 50;
+    // 【修正】画面の中心から「画面サイズの半分＋50px」の距離にスポーン（すぐ画面内に入る距離）
+    const dist = (Math.max(canvas.width, canvas.height) / 2) + 50; 
     const hp = waveEnemyMaxHpBase * Math.pow(1.35, state.wave - 1);
-    state.enemies.push({ x: corePos.x + Math.cos(angle)*dist, y: corePos.y + Math.sin(angle)*dist, 
-                         hp: hp, maxHp: hp, speed: 0.8 + Math.random()*0.4 + (state.wave*0.03), 
-                         radius: 10, color: '#ff2255', reward: Math.floor(3 + state.wave*0.5), slow: 1, sTimer: 0, pDmg: 0, pTimer: 0, stunTimer: 0 });
+    
+    state.enemies.push({ 
+        x: corePos.x + Math.cos(angle)*dist, 
+        y: corePos.y + Math.sin(angle)*dist, 
+        hp: hp, maxHp: hp, speed: 0.8 + Math.random()*0.4 + (state.wave*0.03), 
+        radius: 10, color: '#ff2255', reward: Math.floor(3 + state.wave*0.5), slow: 1, sTimer: 0, pDmg: 0, pTimer: 0, stunTimer: 0 
+    });
 }
 
-// mousedown から pointerdown に変更（スマホのタップにも確実に対応）
 canvas.addEventListener('pointerdown', e => {
     if(e.clientX < sidebarWidth) return;
     const gx = Math.floor(e.clientX / gridSize) * gridSize + gridSize / 2;
@@ -255,7 +261,6 @@ function loop() {
     ctx.fillStyle = 'rgba(3, 3, 8, 0.4)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 【修正】マス目の線をハッキリ見えるように明るいシアン色に変更
     ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)'; 
     ctx.lineWidth = 1;
     for(let i = sidebarWidth; i < canvas.width; i += gridSize) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }

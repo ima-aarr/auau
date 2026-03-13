@@ -3,54 +3,87 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Node Defender</title>
+<title>Node Defender: Advanced</title>
 <style>
-    body { margin: 0; overflow: hidden; background: #050510; color: #fff; font-family: sans-serif; user-select: none; -webkit-user-select: none; }
+    body { margin: 0; overflow: hidden; background: #030308; color: #e0e0ff; font-family: 'Courier New', Courier, monospace; user-select: none; -webkit-user-select: none; }
     canvas { display: block; }
     #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; }
-    #leftPanel { width: 250px; background: rgba(10, 10, 30, 0.9); border-right: 2px solid #0ff; display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; pointer-events: auto; overflow-y: auto; z-index: 10; }
-    .stat { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #0ff; text-shadow: 0 0 5px #0ff; }
-    .node-btn { background: #112; border: 1px solid #0ff; color: #fff; padding: 10px; margin-bottom: 5px; cursor: pointer; border-radius: 5px; text-align: left; transition: 0.2s; }
-    .node-btn:hover, .node-btn.selected { background: #0ff; color: #000; }
-    .node-name { font-weight: bold; font-size: 16px; }
-    .node-desc { font-size: 11px; color: #ccc; margin-top: 5px; }
-    .node-btn:hover .node-desc, .node-btn.selected .node-desc { color: #333; }
-    #actionPanel { position: absolute; bottom: 20px; left: 270px; background: rgba(10, 10, 30, 0.9); padding: 15px; border: 2px solid #0ff; border-radius: 8px; pointer-events: auto; display: none; z-index: 10; }
-    #actionPanel h3 { margin: 0 0 10px 0; color: #0ff; }
-    button { background: #112; border: 1px solid #0ff; color: #0ff; padding: 8px 15px; cursor: pointer; font-weight: bold; border-radius: 4px; margin-right: 5px; }
-    button:hover { background: #0ff; color: #000; }
-    #topRight { position: absolute; top: 10px; right: 10px; pointer-events: auto; display: flex; gap: 5px; z-index: 10; }
-    #saveLoadModal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 10, 30, 0.95); padding: 20px; border: 2px solid #0ff; border-radius: 10px; pointer-events: auto; display: none; flex-direction: column; gap: 10px; z-index: 20; width: 400px; }
-    textarea { width: 100%; height: 100px; background: #000; color: #0ff; border: 1px solid #0ff; padding: 5px; box-sizing: border-box; resize: none; }
+    #sidebar { width: 320px; background: rgba(5, 5, 15, 0.95); border-right: 1px solid #00ffff; display: flex; flex-direction: column; pointer-events: auto; z-index: 10; height: 100vh; box-shadow: 2px 0 15px rgba(0, 255, 255, 0.1); }
+    #stats { padding: 20px; border-bottom: 1px solid #1a334d; background: #0a0a1a; }
+    .stat-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #00ffff; letter-spacing: 1px; }
+    .stat-row span { color: #ffffff; text-shadow: 0 0 8px #00ffff; }
+    #controls { padding: 15px; border-bottom: 1px solid #1a334d; display: flex; gap: 10px; flex-wrap: wrap; }
+    button { background: #001122; border: 1px solid #00ffff; color: #00ffff; padding: 12px 15px; cursor: pointer; font-weight: bold; border-radius: 0; flex-grow: 1; text-transform: uppercase; font-size: 12px; transition: all 0.2s; box-sizing: border-box; }
+    button:hover:not(:disabled) { background: #00ffff; color: #000; box-shadow: 0 0 15px #00ffff; }
+    button:disabled { border-color: #333; color: #555; cursor: not-allowed; background: transparent; }
+    #buildMenu { flex-grow: 1; overflow-y: auto; padding: 15px; }
+    #buildMenu::-webkit-scrollbar { width: 6px; }
+    #buildMenu::-webkit-scrollbar-thumb { background: #00ffff; }
+    .node-card { background: #080814; border: 1px solid #1a334d; border-left: 4px solid #00ffff; margin-bottom: 12px; padding: 12px; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
+    .node-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0,255,255,0.1), transparent); transform: translateX(-100%); transition: 0.5s; }
+    .node-card:hover::before, .node-card.selected::before { transform: translateX(100%); }
+    .node-card:hover, .node-card.selected { background: #112233; border-color: #00ffff; transform: translateX(5px); box-shadow: 0 0 10px rgba(0,255,255,0.2); }
+    .n-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .n-name { font-weight: bold; font-size: 16px; color: #fff; text-shadow: 0 0 3px currentColor; }
+    .n-cost { color: #ffea00; font-weight: bold; font-size: 14px; text-shadow: 0 0 5px rgba(255,234,0,0.5); }
+    .n-desc { font-size: 12px; color: #aaa; margin-bottom: 8px; line-height: 1.4; }
+    .n-stats { font-size: 11px; color: #0ff; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(0,255,255,0.05); padding: 5px; }
+    #actionPanel { position: absolute; bottom: 30px; left: 350px; background: rgba(5, 5, 15, 0.95); padding: 25px; border: 1px solid #00ffff; pointer-events: auto; display: none; z-index: 10; min-width: 280px; box-shadow: 0 0 25px rgba(0, 255, 255, 0.15); backdrop-filter: blur(5px); }
+    #actionPanel h3 { margin: 0 0 20px 0; color: #00ffff; text-transform: uppercase; border-bottom: 1px solid #1a334d; padding-bottom: 10px; font-size: 20px; letter-spacing: 2px; }
+    .ap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; font-size: 14px; }
+    .ap-grid div { color: #888; display: flex; justify-content: space-between; border-bottom: 1px dotted #333; padding-bottom: 3px; }
+    .ap-grid span { color: #fff; font-weight: bold; }
+    .ap-actions { display: flex; gap: 10px; }
+    .btn-sell { border-color: #ff3366; color: #ff3366; }
+    .btn-sell:hover:not(:disabled) { background: #ff3366; color: #000; box-shadow: 0 0 15px #ff3366; }
+    #modalOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; display: none; justify-content: center; align-items: center; pointer-events: auto; backdrop-filter: blur(3px); }
+    .modal { background: #05050f; border: 1px solid #00ffff; padding: 30px; width: 600px; max-width: 90%; box-shadow: 0 0 40px rgba(0,255,255,0.2); }
+    .modal h2 { margin: 0 0 20px 0; color: #0ff; letter-spacing: 2px; text-align: center; border-bottom: 1px solid #1a334d; padding-bottom: 10px; }
+    textarea { width: 100%; height: 200px; background: #000; color: #0ff; border: 1px solid #1a334d; padding: 15px; font-family: monospace; font-size: 13px; resize: none; box-sizing: border-box; margin-bottom: 20px; outline: none; transition: 0.3s; line-height: 1.5; }
+    textarea:focus { border-color: #0ff; box-shadow: inset 0 0 10px rgba(0,255,255,0.1); }
+    .modal-btns { display: flex; justify-content: flex-end; gap: 15px; }
+    .modal-btns button { padding: 12px 25px; font-size: 14px; }
 </style>
 </head>
 <body>
 <div id="ui">
-    <div id="leftPanel">
-        <div class="stat">Wave: <span id="valWave">1</span></div>
-        <div class="stat">Core HP: <span id="valCore">100</span></div>
-        <div class="stat">Credits: <span id="valCoins">200</span></div>
-        <button id="nextWaveBtn" style="margin-bottom: 15px;">Start Wave</button>
-        <div id="nodeList"></div>
+    <div id="sidebar">
+        <div id="stats">
+            <div class="stat-row">WAVE <span><span id="uiWave">1</span></span></div>
+            <div class="stat-row">CORE HP <span><span id="uiCore">1000</span></span></div>
+            <div class="stat-row">CREDITS <span><span id="uiCoins">600</span></span></div>
+        </div>
+        <div id="controls">
+            <button id="btnNextWave">Initialize Wave</button>
+            <button id="btnSave">Sys. Save</button>
+            <button id="btnLoad">Sys. Load</button>
+        </div>
+        <div id="buildMenu"></div>
     </div>
 </div>
-<div id="topRight">
-    <button id="saveBtn">Save</button>
-    <button id="loadBtn">Load</button>
-</div>
 <div id="actionPanel">
-    <h3 id="apName">Node</h3>
-    <div style="font-size:12px; margin-bottom:10px;">Lvl: <span id="apLvl">1</span> | Dmg: <span id="apDmg"></span> | Rng: <span id="apRng"></span></div>
-    <button id="upgBtn">Upgrade (<span id="apCost"></span>)</button>
-    <button id="sellBtn" style="border-color:#f00; color:#f00;">Sell (<span id="apSell"></span>)</button>
-    <button id="closeApBtn" style="border-color:#888; color:#888;">Close</button>
+    <h3 id="apName">NODE</h3>
+    <div class="ap-grid">
+        <div>LVL <span id="apLvl">1</span></div>
+        <div>DMG <span id="apDmg">0</span></div>
+        <div>RNG <span id="apRng">0</span></div>
+        <div>SPD <span id="apRate">0</span></div>
+    </div>
+    <div id="apSpecial" style="font-size: 13px; color: #0f0; margin-bottom: 20px; text-align: center; height: 16px; font-weight: bold;"></div>
+    <div class="ap-actions">
+        <button id="btnUpg">UPG <br><span id="apCost" style="font-size:10px;">0</span></button>
+        <button id="btnSell" class="btn-sell">SELL <br><span id="apSell" style="font-size:10px;">0</span></button>
+        <button id="btnClose" style="border-color:#555; color:#aaa;">CLOSE</button>
+    </div>
 </div>
-<div id="saveLoadModal">
-    <h3 style="margin:0;color:#0ff;" id="slTitle">Save/Load</h3>
-    <textarea id="slText"></textarea>
-    <div style="display:flex; justify-content:flex-end; gap:10px;">
-        <button id="slActionBtn">Confirm</button>
-        <button id="slCloseBtn">Cancel</button>
+<div id="modalOverlay">
+    <div class="modal">
+        <h2 id="modalTitle">DATA ARCHIVE</h2>
+        <textarea id="modalText"></textarea>
+        <div class="modal-btns">
+            <button id="modalAction">EXECUTE</button>
+            <button id="modalCancel" class="btn-sell">ABORT</button>
+        </div>
     </div>
 </div>
 <canvas></canvas>
@@ -58,6 +91,7 @@
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 const gridSize = 40;
+const sidebarWidth = 320;
 let cols, rows;
 
 function resize() {
@@ -65,252 +99,729 @@ function resize() {
     canvas.height = window.innerHeight;
     cols = Math.floor(canvas.width / gridSize);
     rows = Math.floor(canvas.height / gridSize);
+    updateCorePos();
 }
 window.addEventListener('resize', resize);
-resize();
 
+// コア（基地）の位置を画面中央（サイドバーを除く）に設定
+const corePos = { x: 0, y: 0 };
+function updateCorePos() {
+    corePos.x = Math.floor(((canvas.width - sidebarWidth) / 2 + sidebarWidth) / gridSize) * gridSize + gridSize / 2;
+    corePos.y = Math.floor(canvas.height / 2 / gridSize) * gridSize + gridSize / 2;
+}
+
+// ----------------------------------------------------
+// 拡張された超多彩なディフェンス機器（ノード）データベース
+// ----------------------------------------------------
 const NODE_TYPES = {
-    basic: { name: 'Blaster', cost: 50, dmg: 10, range: 120, rate: 45, color: '#fff', type: 'normal', desc: 'Basic rapid fire.' },
-    sniper: { name: 'Railgun', cost: 150, dmg: 80, range: 300, rate: 120, color: '#f0f', type: 'normal', desc: 'High damage, long range, slow.' },
-    rapid: { name: 'Vulcan', cost: 120, dmg: 3, range: 100, rate: 5, color: '#ff0', type: 'normal', desc: 'Very fast, low damage.' },
-    splash: { name: 'Mortar', cost: 200, dmg: 25, range: 150, rate: 90, color: '#f50', type: 'splash', radius: 60, desc: 'Explosive area damage.' },
-    frost: { name: 'Cryo', cost: 180, dmg: 5, range: 110, rate: 60, color: '#0ff', type: 'slow', factor: 0.4, time: 180, desc: 'Slows down enemies.' },
-    venom: { name: 'Toxin', cost: 220, dmg: 5, range: 130, rate: 50, color: '#0f0', type: 'poison', dot: 3, dotTime: 240, desc: 'Damage over time.' },
-    laser: { name: 'Beam', cost: 300, dmg: 1, range: 200, rate: 1, color: '#f00', type: 'beam', desc: 'Continuous piercing beam.' }
+    // --- 実弾系（ノーマル） ---
+    blaster:  { name: 'BLASTER', cost: 50,  dmg: 12, range: 120, rate: 40,  color: '#ffffff', type: 'normal', desc: '安価で標準的な連射砲。' },
+    vulcan:   { name: 'VULCAN',  cost: 140, dmg: 4,  range: 100, rate: 6,   color: '#ffff00', type: 'normal', desc: '超高速連射。ダメージは低いが弾幕を張る。' },
+    railgun:  { name: 'RAILGUN', cost: 220, dmg: 120,range: 350, rate: 120, color: '#ff00ff', type: 'normal', desc: '超遠距離からの一撃必殺。装填は非常に遅い。' },
+    
+    // --- 爆発系（スプラッシュ） ---
+    mortar:   { name: 'MORTAR',  cost: 200, dmg: 35, range: 160, rate: 90,  color: '#ff5500', type: 'splash', radius: 60, desc: '着弾時に爆発し、周囲の敵に範囲ダメージ。' },
+    missile:  { name: 'MISSILE', cost: 400, dmg: 90, range: 400, rate: 160, color: '#ff2222', type: 'splash', radius: 110, desc: '広範囲を超火力の爆風で吹き飛ばす大型ミサイル。' },
+    
+    // --- 妨害系（スロウ） ---
+    cryo:     { name: 'CRYO',    cost: 160, dmg: 5,  range: 120, rate: 60,  color: '#00ffff', type: 'slow', factor: 0.5, time: 180, desc: '冷却弾。敵の移動速度を一定時間半減させる。' },
+    glacier:  { name: 'GLACIER', cost: 320, dmg: 15, range: 180, rate: 100, color: '#aaaaff', type: 'slow', factor: 0.2, time: 240, desc: '絶対零度。敵の動きをほぼ停止させる。' },
+    
+    // --- 持続ダメージ系（毒） ---
+    toxin:    { name: 'TOXIN',   cost: 240, dmg: 2,  range: 140, rate: 50,  color: '#00ff00', type: 'poison', dot: 5, dotTime: 300, desc: '毒を注入し、長期間にわたり内部から破壊する。' },
+    venom:    { name: 'VENOM',   cost: 450, dmg: 8,  range: 170, rate: 40,  color: '#55ff55', type: 'poison', dot: 15, dotTime: 400, desc: '極めて強力な酸。装甲を溶かし甚大な継続ダメージ。' },
+    
+    // --- 光学兵器系（ビーム・貫通） ---
+    laser:    { name: 'LASER',   cost: 300, dmg: 1.5,range: 220, rate: 1,   color: '#ff0055', type: 'beam', desc: 'ターゲットを照射し続ける高熱レーザー。' },
+    plasma:   { name: 'PLASMA',  cost: 600, dmg: 4.5,range: 280, rate: 1,   color: '#ff88ff', type: 'beam', desc: '最先端のプラズマ照射。全てを焼き尽くす。' },
+    
+    // --- 特殊系（スタン・経済） ---
+    emp:      { name: 'EMP TOWER',cost: 350, dmg: 1, range: 110, rate: 150, color: '#aaaaaa', type: 'stun', time: 90, desc: '電磁パルスで周囲の敵を一時的に完全麻痺させる。' },
+    miner:    { name: 'CREDIT MINER',cost: 250,dmg: 0, range: 0,   rate: 0,   color: '#ffaa00', type: 'income', value: 40, desc: 'ウェーブ終了時に追加のクレジット(資金)を生成する。' }
 };
 
+// ----------------------------------------------------
+// ゲームステート（セーブ・ロードの対象となる全データ）
+// ----------------------------------------------------
 let state = {
-    wave: 1, coreHp: 100, coins: 250, waveActive: false,
-    nodes: [], enemies: [], bullets: [], particles: []
+    wave: 1, 
+    coreHp: 1000, 
+    coins: 700, 
+    waveActive: false,
+    nodes: [],      // 配置されたディフェンス機器
+    enemies: [],    // 敵キャラ
+    bullets: [],    // 飛んでいる弾
+    particles: []   // 描画エフェクト用
 };
 
-let selectedType = null;
-let selectedNode = null;
+let selectedBuildType = null; // 建築メニューで選択中のノードタイプ
+let selectedNode = null;      // マップ上で選択中の配置済みノード
 let frame = 0;
 let enemySpawnTimer = 0;
 let enemiesToSpawn = 0;
+let waveEnemyMaxHpBase = 30;  // 敵の初期HP基準値
 
-const corePos = { x: 0, y: 0 };
-function updateCorePos() {
-    corePos.x = Math.floor((cols * gridSize + 250)/2 / gridSize) * gridSize + gridSize/2;
-    corePos.y = Math.floor((rows * gridSize)/2 / gridSize) * gridSize + gridSize/2;
-}
-updateCorePos();
-window.addEventListener('resize', updateCorePos);
-
+// DOM要素のキャッシュ
 const els = {
-    wave: document.getElementById('valWave'), core: document.getElementById('valCore'), coins: document.getElementById('valCoins'),
-    nextBtn: document.getElementById('nextWaveBtn'), nodeList: document.getElementById('nodeList'),
-    ap: document.getElementById('actionPanel'), apName: document.getElementById('apName'), apLvl: document.getElementById('apLvl'),
-    apDmg: document.getElementById('apDmg'), apRng: document.getElementById('apRng'), apCost: document.getElementById('apCost'),
-    apSell: document.getElementById('apSell'), upgBtn: document.getElementById('upgBtn'), sellBtn: document.getElementById('sellBtn'),
-    closeApBtn: document.getElementById('closeApBtn'), saveBtn: document.getElementById('saveBtn'), loadBtn: document.getElementById('loadBtn'),
-    slModal: document.getElementById('saveLoadModal'), slTitle: document.getElementById('slTitle'), slText: document.getElementById('slText'),
-    slActionBtn: document.getElementById('slActionBtn'), slCloseBtn: document.getElementById('slCloseBtn')
+    wave: document.getElementById('uiWave'),
+    core: document.getElementById('uiCore'),
+    coins: document.getElementById('uiCoins'),
+    btnNext: document.getElementById('btnNextWave'),
+    btnSave: document.getElementById('btnSave'),
+    btnLoad: document.getElementById('btnLoad'),
+    buildMenu: document.getElementById('buildMenu'),
+    
+    ap: document.getElementById('actionPanel'),
+    apName: document.getElementById('apName'),
+    apLvl: document.getElementById('apLvl'),
+    apDmg: document.getElementById('apDmg'),
+    apRng: document.getElementById('apRng'),
+    apRate: document.getElementById('apRate'),
+    apSpecial: document.getElementById('apSpecial'),
+    apCost: document.getElementById('apCost'),
+    apSell: document.getElementById('apSell'),
+    btnUpg: document.getElementById('btnUpg'),
+    btnSell: document.getElementById('btnSell'),
+    btnClose: document.getElementById('btnClose'),
+    
+    modal: document.getElementById('modalOverlay'),
+    mTitle: document.getElementById('modalTitle'),
+    mText: document.getElementById('modalText'),
+    mAction: document.getElementById('modalAction'),
+    mCancel: document.getElementById('modalCancel')
 };
-
+    // ----------------------------------------------------
+// UI更新とメニュー生成
+// ----------------------------------------------------
 function updateUI() {
-    els.wave.innerText = state.wave; els.core.innerText = state.coreHp; els.coins.innerText = state.coins;
-    if(state.coreHp <= 0) alert('Game Over. Reload to restart.');
+    els.wave.innerText = state.wave;
+    els.core.innerText = Math.floor(state.coreHp);
+    els.coins.innerText = Math.floor(state.coins);
+    
+    // コスト不足のノードを視覚的にグレーアウト
+    document.querySelectorAll('.node-card').forEach(card => {
+        const cost = parseInt(card.dataset.cost);
+        if(state.coins < cost) {
+            card.style.opacity = '0.4';
+            card.style.borderColor = '#333';
+        } else {
+            card.style.opacity = '1';
+            card.style.borderColor = card.classList.contains('selected') ? '#00ffff' : '#1a334d';
+        }
+    });
+
+    if(state.coreHp <= 0) {
+        alert('SYSTEM FAILURE: CORE DESTROYED.\nリロードして再起動してください。');
+        state.coreHp = 0; // マイナス表示防止
+    }
 }
 
-Object.keys(NODE_TYPES).forEach(k => {
-    const t = NODE_TYPES[k];
-    const btn = document.createElement('div');
-    btn.className = 'node-btn';
-    btn.innerHTML = `<div class="node-name">${t.name} ($${t.cost})</div><div class="node-desc">${t.desc}</div>`;
-    btn.onclick = () => {
-        document.querySelectorAll('.node-btn').forEach(b=>b.classList.remove('selected'));
-        if(selectedType === k) { selectedType = null; }
-        else { btn.classList.add('selected'); selectedType = k; closeActionPanel(); }
+// 建築メニュー（サイドバー）の生成
+Object.keys(NODE_TYPES).forEach(key => {
+    const t = NODE_TYPES[key];
+    const card = document.createElement('div');
+    card.className = 'node-card';
+    card.dataset.type = key;
+    card.dataset.cost = t.cost;
+    
+    // 種類に応じた特殊表記
+    let specialStat = '';
+    if(t.type === 'splash') specialStat = `<div>RAD <span>${t.radius}</span></div>`;
+    else if(t.type === 'slow') specialStat = `<div>SLW <span>${(1-t.factor)*100}%</span></div>`;
+    else if(t.type === 'poison') specialStat = `<div>PSN <span>${t.dot}/f</span></div>`;
+    else if(t.type === 'income') specialStat = `<div>INC <span>+${t.value}</span></div>`;
+
+    card.innerHTML = `
+        <div class="n-header">
+            <span class="n-name" style="color: ${t.color}">${t.name}</span>
+            <span class="n-cost">$${t.cost}</span>
+        </div>
+        <div class="n-desc">${t.desc}</div>
+        <div class="n-stats">
+            <div>DMG <span>${t.dmg}</span></div>
+            <div>RNG <span>${t.range}</span></div>
+            <div>SPD <span>${t.rate > 0 ? (60/t.rate).toFixed(1)+'/s' : '-'}</span></div>
+            ${specialStat}
+        </div>
+    `;
+    
+    card.onclick = () => {
+        document.querySelectorAll('.node-card').forEach(b => b.classList.remove('selected'));
+        if(selectedBuildType === key) {
+            selectedBuildType = null;
+        } else {
+            card.classList.add('selected');
+            selectedBuildType = key;
+            closeActionPanel();
+        }
     };
-    els.nodeList.appendChild(btn);
+    els.buildMenu.appendChild(card);
 });
 
+// ----------------------------------------------------
+// アクションパネル（アップグレード・売却）
+// ----------------------------------------------------
 function openActionPanel(node) {
-    selectedNode = node; selectedType = null;
-    document.querySelectorAll('.node-btn').forEach(b=>b.classList.remove('selected'));
+    selectedNode = node;
+    selectedBuildType = null;
+    document.querySelectorAll('.node-card').forEach(b => b.classList.remove('selected'));
+    
     const t = NODE_TYPES[node.type];
-    els.apName.innerText = t.name; els.apLvl.innerText = node.lvl;
-    els.apDmg.innerText = (t.dmg * Math.pow(1.2, node.lvl-1)).toFixed(1);
-    els.apRng.innerText = (t.range * Math.pow(1.05, node.lvl-1)).toFixed(0);
-    els.apCost.innerText = Math.floor(t.cost * Math.pow(1.5, node.lvl));
-    els.apSell.innerText = Math.floor(t.cost * Math.pow(1.5, node.lvl-1) * 0.6);
+    els.apName.innerText = t.name;
+    els.apName.style.color = t.color;
+    els.apLvl.innerText = node.lvl;
+    
+    // レベルによるステータス上昇の計算（種類によって成長率を変える）
+    let dmgMulti = 1.2; let rngMulti = 1.05; let rateMulti = 0.95;
+    if(t.type === 'income') dmgMulti = 1.5; // 収入系の成長率
+    
+    const currentDmg = t.dmg * Math.pow(dmgMulti, node.lvl - 1);
+    const currentRng = t.range * Math.pow(rngMulti, node.lvl - 1);
+    const currentRate = Math.max(1, t.rate * Math.pow(rateMulti, node.lvl - 1));
+    
+    els.apDmg.innerText = t.type === 'income' ? '-' : currentDmg.toFixed(1);
+    els.apRng.innerText = t.range === 0 ? '-' : currentRng.toFixed(0);
+    els.apRate.innerText = t.rate === 0 ? '-' : (60/currentRate).toFixed(1)+'/s';
+    
+    // 特殊ステータス表示
+    if(t.type === 'income') els.apSpecial.innerText = `INCOME: +${Math.floor(t.value * Math.pow(1.5, node.lvl - 1))}`;
+    else if(t.type === 'slow') els.apSpecial.innerText = `SLOW FACTOR: ${(1-t.factor)*100}%`;
+    else if(t.type === 'poison') els.apSpecial.innerText = `POISON DMG: ${(t.dot * Math.pow(1.2, node.lvl - 1)).toFixed(1)}`;
+    else els.apSpecial.innerText = '';
+    
+    // コスト計算
+    const upgCost = Math.floor(t.cost * Math.pow(1.6, node.lvl));
+    const sellValue = Math.floor(t.cost * Math.pow(1.6, node.lvl - 1) * 0.5); // 投資額の約半額
+    
+    els.apCost.innerText = '$' + upgCost;
+    els.apSell.innerText = '$' + sellValue;
+    
+    els.btnUpg.disabled = state.coins < upgCost;
     els.ap.style.display = 'block';
 }
 
-function closeActionPanel() { selectedNode = null; els.ap.style.display = 'none'; }
-els.closeApBtn.onclick = closeActionPanel;
+function closeActionPanel() {
+    selectedNode = null;
+    els.ap.style.display = 'none';
+}
+els.btnClose.onclick = closeActionPanel;
 
-els.upgBtn.onclick = () => {
-    const cost = Math.floor(NODE_TYPES[selectedNode.type].cost * Math.pow(1.5, selectedNode.lvl));
-    if(state.coins >= cost) { state.coins -= cost; selectedNode.lvl++; openActionPanel(selectedNode); updateUI(); }
-};
-els.sellBtn.onclick = () => {
-    const sell = Math.floor(NODE_TYPES[selectedNode.type].cost * Math.pow(1.5, selectedNode.lvl-1) * 0.6);
-    state.coins += sell; state.nodes = state.nodes.filter(n => n !== selectedNode);
-    closeActionPanel(); updateUI();
-};
-
-els.nextBtn.onclick = () => {
-    if(state.waveActive) return;
-    state.waveActive = true; enemiesToSpawn = 10 + Math.floor(state.wave * 2.5);
-    enemySpawnTimer = 0; els.nextBtn.style.opacity = 0.5;
+els.btnUpg.onclick = () => {
+    if(!selectedNode) return;
+    const t = NODE_TYPES[selectedNode.type];
+    const cost = Math.floor(t.cost * Math.pow(1.6, selectedNode.lvl));
+    if(state.coins >= cost) {
+        state.coins -= cost;
+        selectedNode.lvl++;
+        openActionPanel(selectedNode); // 表示更新
+        updateUI();
+    }
 };
 
+els.btnSell.onclick = () => {
+    if(!selectedNode) return;
+    const t = NODE_TYPES[selectedNode.type];
+    const sellValue = Math.floor(t.cost * Math.pow(1.6, selectedNode.lvl - 1) * 0.5);
+    state.coins += sellValue;
+    state.nodes = state.nodes.filter(n => n !== selectedNode);
+    closeActionPanel();
+    updateUI();
+};
+
+// ----------------------------------------------------
+// セーブ＆ロード（Base64エンコード）
+// ----------------------------------------------------
 let slMode = '';
-els.saveBtn.onclick = () => {
-    slMode = 'save'; els.slTitle.innerText = 'Save Game Code';
-    const data = { w: state.wave, c: state.coreHp, m: state.coins, n: state.nodes.map(n => ({x:n.x,y:n.y,t:n.type,l:n.lvl})) };
-    els.slText.value = btoa(JSON.stringify(data));
-    els.slText.readOnly = true; els.slModal.style.display = 'flex';
+els.btnSave.onclick = () => {
+    slMode = 'save';
+    els.mTitle.innerText = 'SYSTEM SAVE DATA';
+    els.mAction.innerText = 'COPY TO CLIPBOARD';
+    // 現在の状況を文字列化
+    const data = {
+        w: state.wave, c: state.coreHp, m: state.coins,
+        n: state.nodes.map(n => ({x: n.x, y: n.y, t: n.type, l: n.lvl}))
+    };
+    els.mText.value = btoa(JSON.stringify(data));
+    els.mText.readOnly = true;
+    els.modal.style.display = 'flex';
 };
-els.loadBtn.onclick = () => {
-    slMode = 'load'; els.slTitle.innerText = 'Paste Game Code';
-    els.slText.value = ''; els.slText.readOnly = false; els.slModal.style.display = 'flex';
+
+els.btnLoad.onclick = () => {
+    slMode = 'load';
+    els.mTitle.innerText = 'SYSTEM LOAD DATA';
+    els.mAction.innerText = 'OVERRIDE SYSTEM';
+    els.mText.value = '';
+    els.mText.readOnly = false;
+    els.modal.style.display = 'flex';
 };
-els.slCloseBtn.onclick = () => els.slModal.style.display = 'none';
-els.slActionBtn.onclick = () => {
-    if(slMode === 'load') {
+
+els.mCancel.onclick = () => els.modal.style.display = 'none';
+
+els.mAction.onclick = () => {
+    if(slMode === 'save') {
+        els.mText.select();
+        document.execCommand('copy');
+        alert('セーブデータをクリップボードにコピーしました。');
+    } else if(slMode === 'load') {
         try {
-            const d = JSON.parse(atob(els.slText.value.trim()));
-            state.wave = d.w; state.coreHp = d.c; state.coins = d.m;
-            state.nodes = d.n.map(n => ({x:n.x, y:n.y, type:n.t, lvl:n.l, cd:0}));
-            state.enemies=[]; state.bullets=[]; state.particles=[]; state.waveActive=false;
-            els.nextBtn.style.opacity = 1; updateUI();
-        } catch(e) {}
-    }
-    els.slModal.style.display = 'none';
-};
-
-canvas.addEventListener('mousedown', e => {
-    if(e.clientX < 250) return;
-    const gx = Math.floor(e.clientX / gridSize) * gridSize + gridSize/2;
-    const gy = Math.floor(e.clientY / gridSize) * gridSize + gridSize/2;
-    if(gx === corePos.x && gy === corePos.y) return;
-
-    const existing = state.nodes.find(n => n.x === gx && n.y === gy);
-    if(selectedType) {
-        if(!existing) {
-            const cost = NODE_TYPES[selectedType].cost;
-            if(state.coins >= cost) {
-                state.coins -= cost;
-                state.nodes.push({x: gx, y: gy, type: selectedType, lvl: 1, cd: 0});
-                selectedType = null; document.querySelectorAll('.node-btn').forEach(b=>b.classList.remove('selected'));
-                updateUI();
-            }
+            const d = JSON.parse(atob(els.mText.value.trim()));
+            state.wave = d.w;
+            state.coreHp = d.c;
+            state.coins = d.m;
+            state.nodes = d.n.map(n => ({x: n.x, y: n.y, type: n.t, lvl: n.l, cd: 0}));
+            state.enemies = []; state.bullets = []; state.particles = [];
+            state.waveActive = false;
+            els.btnNext.disabled = false;
+            els.btnNext.innerText = 'INITIALIZE WAVE';
+            updateUI();
+            alert('システムのオーバーライド（ロード）に成功しました。');
+            els.modal.style.display = 'none';
+        } catch(e) {
+            alert('エラー: 無効なセーブデータです。');
         }
-    } else {
-        if(existing) openActionPanel(existing); else closeActionPanel();
     }
-});
+};
+    // ----------------------------------------------------
+// ウェーブ制御と敵のスポーン設定
+// ----------------------------------------------------
+els.btnNext.onclick = () => {
+    if(state.waveActive) return;
+    
+    state.waveActive = true;
+    // ウェーブが進むごとに敵の数が非線形に増加
+    enemiesToSpawn = 12 + Math.floor(state.wave * 3.5) + Math.floor(Math.pow(state.wave, 1.2));
+    enemySpawnTimer = 0;
+    
+    els.btnNext.disabled = true;
+    els.btnNext.innerText = 'WAVE IN PROGRESS...';
+    closeActionPanel();
+};
 
 function spawnEnemy() {
     const angle = Math.random() * Math.PI * 2;
-    const dist = Math.max(canvas.width, canvas.height);
-    const hp = 20 * Math.pow(1.3, state.wave - 1);
-    const spd = 1 + Math.random() * 0.5 + (state.wave * 0.05);
-    state.enemies.push({ x: corePos.x + Math.cos(angle)*dist, y: corePos.y + Math.sin(angle)*dist, hp: hp, maxHp: hp, speed: spd, vx:0, vy:0, slow: 0, pDmg: 0, pTimer: 0 });
+    // 画面外の遠くからスポーンさせる
+    const dist = Math.max(canvas.width, canvas.height) + 100; 
+    
+    // HPスケーリング（波ごとに指数関数的に強くなる）
+    const hpMulti = Math.pow(1.35, state.wave - 1);
+    const baseHp = waveEnemyMaxHpBase * hpMulti;
+    
+    // 速度スケーリング（微増）
+    const spd = 0.8 + Math.random() * 0.4 + (state.wave * 0.03);
+    
+    // 敵のバリエーション（確率で特殊な敵が出現）
+    const typeRoll = Math.random();
+    let eType = 'normal';
+    let eHp = baseHp;
+    let eSpd = spd;
+    let eRadius = 10;
+    let eColor = '#ff2255';
+    let reward = Math.floor(3 + state.wave * 0.5);
+
+    if (state.wave > 2 && typeRoll < 0.2) {
+        // 【タンク】HP激高・鈍足・デカい
+        eType = 'tank';
+        eHp = baseHp * 4.0;
+        eSpd = spd * 0.45;
+        eRadius = 18;
+        eColor = '#ff8800';
+        reward *= 3;
+    } else if (state.wave > 3 && typeRoll > 0.75) {
+        // 【スウォーム】HP低・超高速・小さい
+        eType = 'fast';
+        eHp = baseHp * 0.35;
+        eSpd = spd * 1.9;
+        eRadius = 7;
+        eColor = '#ff00ff';
+        reward = Math.max(1, Math.floor(reward * 0.6));
+    }
+
+    state.enemies.push({ 
+        x: corePos.x + Math.cos(angle) * dist, 
+        y: corePos.y + Math.sin(angle) * dist, 
+        hp: eHp, maxHp: eHp, speed: eSpd, 
+        radius: eRadius, color: eColor, reward: reward,
+        slow: 1, sTimer: 0, pDmg: 0, pTimer: 0, stunTimer: 0 
+    });
 }
 
-function P(x,y,c,s) {
-    const a = Math.random()*Math.PI*2, v = Math.random()*s;
-    state.particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,c});
+// ----------------------------------------------------
+// マップ上のクリック操作（建築・選択）
+// ----------------------------------------------------
+canvas.addEventListener('mousedown', e => {
+    // サイドバーの領域は無視
+    if(e.clientX < sidebarWidth) return;
+
+    // グリッドにスナップさせる座標計算
+    const gx = Math.floor(e.clientX / gridSize) * gridSize + gridSize / 2;
+    const gy = Math.floor(e.clientY / gridSize) * gridSize + gridSize / 2;
+    
+    // コアの上には建築不可
+    if(gx === corePos.x && gy === corePos.y) return;
+
+    const existingNode = state.nodes.find(n => n.x === gx && n.y === gy);
+
+    if(selectedBuildType) {
+        // --- 建築モード ---
+        if(!existingNode) {
+            const cost = NODE_TYPES[selectedBuildType].cost;
+            if(state.coins >= cost) {
+                state.coins -= cost;
+                state.nodes.push({ x: gx, y: gy, type: selectedBuildType, lvl: 1, cd: 0 });
+                // 連続で建築できるように選択状態は解除しない
+                updateUI();
+                // 建築エフェクト
+                spawnParticles(gx, gy, NODE_TYPES[selectedBuildType].color, 4, 15);
+            }
+        }
+    } else {
+        // --- 選択モード ---
+        if(existingNode) {
+            openActionPanel(existingNode);
+        } else {
+            closeActionPanel();
+        }
+    }
+});
+
+// ----------------------------------------------------
+// パーティクル・エフェクトシステム
+// ----------------------------------------------------
+function spawnParticles(x, y, color, speed, count) {
+    for(let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const v = Math.random() * speed;
+        state.particles.push({
+            x: x, 
+            y: y,
+            vx: Math.cos(angle) * v, 
+            vy: Math.sin(angle) * v,
+            life: 1, // 1.0 -> 0.0 で消滅
+            color: color,
+            size: Math.random() * 3 + 1
+        });
+    }
 }
 
+// ----------------------------------------------------
+// 収入ノード（Miner）の処理（ウェーブクリア時に実行）
+// ----------------------------------------------------
+function processIncomeNodes() {
+    let totalIncome = 0;
+    state.nodes.forEach(n => {
+        const t = NODE_TYPES[n.type];
+        if (t.type === 'income') {
+            const income = Math.floor(t.value * Math.pow(1.5, n.lvl - 1));
+            totalIncome += income;
+            spawnParticles(n.x, n.y, '#ffaa00', 3, 20);
+        }
+    });
+    
+    if (totalIncome > 0) {
+        state.coins += totalIncome;
+        updateUI();
+    }
+}
+    // ----------------------------------------------------
+// メインゲームループ
+// ----------------------------------------------------
 function loop() {
     requestAnimationFrame(loop);
     frame++;
-    ctx.fillStyle = 'rgba(5, 5, 16, 0.4)';
+
+    // 背景のクリアと残像エフェクト（トレイル）
+    ctx.fillStyle = 'rgba(3, 3, 8, 0.3)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = '#112'; ctx.lineWidth = 1;
-    for(let i=250; i<canvas.width; i+=gridSize) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
-    for(let i=0; i<canvas.height; i+=gridSize) { ctx.beginPath(); ctx.moveTo(250,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+    // グリッドの描画
+    ctx.strokeStyle = '#0a1525'; 
+    ctx.lineWidth = 1;
+    for(let i = sidebarWidth; i < canvas.width; i += gridSize) { 
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); 
+    }
+    for(let i = 0; i < canvas.height; i += gridSize) { 
+        ctx.beginPath(); ctx.moveTo(sidebarWidth, i); ctx.lineTo(canvas.width, i); ctx.stroke(); 
+    }
 
+    // ウェーブの進行管理
     if(state.waveActive) {
         if(enemiesToSpawn > 0) {
             enemySpawnTimer--;
-            if(enemySpawnTimer <= 0) { spawnEnemy(); enemiesToSpawn--; enemySpawnTimer = Math.max(10, 60 - state.wave*2); }
+            if(enemySpawnTimer <= 0) { 
+                spawnEnemy(); 
+                enemiesToSpawn--; 
+                // ウェーブが進むほどスポーン間隔が短くなる
+                enemySpawnTimer = Math.max(8, 50 - state.wave * 1.5); 
+            }
         } else if(state.enemies.length === 0) {
-            state.waveActive = false; state.wave++; state.coins += 50 + state.wave*10; els.nextBtn.style.opacity = 1; updateUI();
+            // ウェーブクリア処理
+            state.waveActive = false; 
+            state.wave++; 
+            state.coins += 50 + state.wave * 15; // クリアボーナス
+            processIncomeNodes(); // 収入ノードの処理
+            
+            els.btnNext.disabled = false;
+            els.btnNext.innerText = 'START WAVE ' + state.wave;
+            updateUI();
         }
     }
 
+    // ----------------------------------------------------
+    // ノード（タワー）の処理
+    // ----------------------------------------------------
     state.nodes.forEach(n => {
         const t = NODE_TYPES[n.type];
-        const range = t.range * Math.pow(1.05, n.lvl-1);
-        const dmg = t.dmg * Math.pow(1.2, n.lvl-1);
         
-        ctx.fillStyle = '#223'; ctx.fillRect(n.x - gridSize/2 + 2, n.y - gridSize/2 + 2, gridSize-4, gridSize-4);
-        ctx.beginPath(); ctx.arc(n.x, n.y, 10, 0, Math.PI*2); ctx.fillStyle = t.color; ctx.fill();
-        ctx.shadowBlur = 10; ctx.shadowColor = t.color; ctx.stroke(); ctx.shadowBlur = 0;
+        // レベルによるステータス計算
+        let dmgMulti = 1.2; let rngMulti = 1.05; let rateMulti = 0.95;
+        if(t.type === 'income') dmgMulti = 1.5;
+        
+        const currentDmg = t.dmg * Math.pow(dmgMulti, n.lvl - 1);
+        const currentRng = t.range * Math.pow(rngMulti, n.lvl - 1);
+        const currentRate = Math.max(1, t.rate * Math.pow(rateMulti, n.lvl - 1));
+        
+        // 土台の描画
+        ctx.fillStyle = '#112233'; 
+        ctx.fillRect(n.x - gridSize/2 + 2, n.y - gridSize/2 + 2, gridSize-4, gridSize-4);
+        
+        // コア（発光部）の描画
+        ctx.beginPath(); 
+        ctx.arc(n.x, n.y, 8 + n.lvl, 0, Math.PI*2); 
+        ctx.fillStyle = t.color; 
+        ctx.fill();
+        ctx.shadowBlur = 15; 
+        ctx.shadowColor = t.color; 
+        ctx.stroke(); 
+        ctx.shadowBlur = 0;
 
-        let target = null; let minDist = range;
+        // 収入ノードは何もしない
+        if (t.type === 'income') return;
+
+        // ターゲット捕捉（最も近い敵）
+        let target = null; 
+        let minDist = currentRng;
+        
         state.enemies.forEach(e => {
             const d = Math.hypot(e.x - n.x, e.y - n.y);
             if(d < minDist) { minDist = d; target = e; }
         });
 
         if(n.cd > 0) n.cd--;
+        
+        // 攻撃処理
         if(target && n.cd <= 0) {
             if(t.type === 'beam') {
-                ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(target.x, target.y);
-                ctx.strokeStyle = t.color; ctx.lineWidth = 3; ctx.stroke();
-                target.hp -= dmg; P(target.x, target.y, t.color, 2);
+                // ビーム兵器（即着弾・貫通描画）
+                ctx.beginPath(); 
+                ctx.moveTo(n.x, n.y); 
+                ctx.lineTo(target.x, target.y);
+                ctx.strokeStyle = t.color; 
+                ctx.lineWidth = 2 + n.lvl; 
+                ctx.shadowBlur = 10; ctx.shadowColor = t.color;
+                ctx.stroke(); ctx.shadowBlur = 0;
+                
+                target.hp -= currentDmg; 
+                spawnParticles(target.x, target.y, t.color, 2, 2);
+            } else if (t.type === 'stun') {
+                // EMP兵器（範囲内の全敵をスタン）
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, currentRng, 0, Math.PI*2);
+                ctx.fillStyle = 'rgba(170, 170, 170, 0.3)';
+                ctx.fill();
+                
+                state.enemies.forEach(e => {
+                    if (Math.hypot(e.x - n.x, e.y - n.y) <= currentRng) {
+                        e.stunTimer = t.time; // スタン時間付与
+                        e.hp -= currentDmg;
+                        spawnParticles(e.x, e.y, '#ffffff', 5, 5);
+                    }
+                });
             } else {
+                // 弾丸発射（実弾、爆発、スロウ、毒）
                 const a = Math.atan2(target.y - n.y, target.x - n.x);
-                state.bullets.push({x: n.x, y: n.y, vx: Math.cos(a)*10, vy: Math.sin(a)*10, t: t.type, d: dmg, p: t, life: 100});
+                const bulletSpeed = 12;
+                state.bullets.push({
+                    x: n.x, y: n.y, 
+                    vx: Math.cos(a) * bulletSpeed, vy: Math.sin(a) * bulletSpeed, 
+                    type: t.type, dmg: currentDmg, props: t, 
+                    lvl: n.lvl, life: 100
+                });
             }
-            n.cd = t.rate;
+            n.cd = currentRate;
         }
     });
 
-    if(selectedNode || selectedType) {
-        const mx = selectedNode ? selectedNode.x : -1000; const my = selectedNode ? selectedNode.y : -1000;
-        const r = selectedNode ? NODE_TYPES[selectedNode.type].range * Math.pow(1.05, selectedNode.lvl-1) : 0;
-        if(selectedNode) { ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.stroke(); }
+    // 選択中のノードの射程範囲を描画
+    if(selectedNode || selectedBuildType) {
+        const mx = selectedNode ? selectedNode.x : -1000; 
+        const my = selectedNode ? selectedNode.y : -1000;
+        
+        let r = 0;
+        if (selectedNode) {
+            r = NODE_TYPES[selectedNode.type].range * Math.pow(1.05, selectedNode.lvl - 1);
+        } else if (selectedBuildType) {
+            r = NODE_TYPES[selectedBuildType].range;
+        }
+
+        if(r > 0) {
+            ctx.beginPath(); 
+            ctx.arc(mx, my, r, 0, Math.PI*2); 
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.05)'; 
+            ctx.fill(); 
+            ctx.strokeStyle = '#00ffff'; 
+            ctx.setLineDash([5, 5]);
+            ctx.stroke(); 
+            ctx.setLineDash([]);
+        }
     }
 
-    state.bullets.forEach((b, i) => {
+    // ----------------------------------------------------
+    // 弾丸の処理
+    // ----------------------------------------------------
+    for(let i = state.bullets.length - 1; i >= 0; i--) {
+        const b = state.bullets[i];
         b.x += b.vx; b.y += b.vy; b.life--;
-        ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fillStyle = b.p.color; ctx.fill();
-        if(b.life <= 0) { state.bullets.splice(i,1); return; }
-        for(let j=state.enemies.length-1; j>=0; j--) {
+        
+        ctx.beginPath(); 
+        ctx.arc(b.x, b.y, 4, 0, Math.PI*2); 
+        ctx.fillStyle = b.props.color; 
+        ctx.shadowBlur = 10; ctx.shadowColor = b.props.color;
+        ctx.fill(); ctx.shadowBlur = 0;
+        
+        if(b.life <= 0) { state.bullets.splice(i, 1); continue; }
+        
+        let hit = false;
+        for(let j = state.enemies.length - 1; j >= 0; j--) {
             const e = state.enemies[j];
-            if(Math.hypot(b.x-e.x, b.y-e.y) < 15) {
-                if(b.t === 'splash') {
-                    state.enemies.forEach(se => { if(Math.hypot(se.x-b.x, se.y-b.y) < b.p.radius) se.hp -= b.d; });
-                    for(let k=0;k<15;k++) P(b.x, b.y, b.p.color, 5);
-                } else { e.hp -= b.d; for(let k=0;k<5;k++) P(b.x, b.y, b.p.color, 3); }
-                if(b.t === 'slow') { e.slow = b.p.factor; e.sTimer = b.p.time; }
-                if(b.t === 'poison') { e.pDmg = b.p.dot; e.pTimer = b.p.dotTime; }
-                state.bullets.splice(i,1); break;
+            if(Math.hypot(b.x - e.x, b.y - e.y) < e.radius + 4) {
+                hit = true;
+                if(b.type === 'splash') {
+                    // スプラッシュダメージ
+                    const blastRadius = b.props.radius * Math.pow(1.1, b.lvl - 1);
+                    ctx.beginPath(); ctx.arc(b.x, b.y, blastRadius, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(255, 85, 0, 0.3)'; ctx.fill();
+                    
+                    state.enemies.forEach(se => { 
+                        if(Math.hypot(se.x - b.x, se.y - b.y) <= blastRadius) se.hp -= b.dmg; 
+                    });
+                    spawnParticles(b.x, b.y, b.props.color, 8, 20);
+                } else {
+                    // 単体ダメージ
+                    e.hp -= b.dmg; 
+                    spawnParticles(b.x, b.y, b.props.color, 4, 8); 
+                }
+                
+                // 状態異常の付与
+                if(b.type === 'slow') { e.slow = b.props.factor; e.sTimer = b.props.time; }
+                if(b.type === 'poison') { e.pDmg = b.props.dot * Math.pow(1.2, b.lvl - 1); e.pTimer = b.props.dotTime; }
+                
+                break;
             }
         }
-    });
+        if (hit) state.bullets.splice(i, 1);
+    }
 
-    state.enemies.forEach((e, i) => {
-        if(e.sTimer > 0) { e.sTimer--; } else { e.slow = 1; }
-        if(e.pTimer > 0) { e.pTimer--; if(frame%30===0) { e.hp -= e.pDmg; P(e.x,e.y,'#0f0',2); } }
+    // ----------------------------------------------------
+    // 敵の処理
+    // ----------------------------------------------------
+    for(let i = state.enemies.length - 1; i >= 0; i--) {
+        const e = state.enemies[i];
         
-        const a = Math.atan2(corePos.y - e.y, corePos.x - e.x);
-        e.x += Math.cos(a) * e.speed * (e.slow===0?1:e.slow); e.y += Math.sin(a) * e.speed * (e.slow===0?1:e.slow);
+        // 状態異常のタイマー処理
+        if (e.stunTimer > 0) e.stunTimer--;
+        if (e.sTimer > 0) { e.sTimer--; } else { e.slow = 1; }
+        if (e.pTimer > 0) { 
+            e.pTimer--; 
+            if(frame % 30 === 0) { // 毒ダメージの適用（0.5秒毎）
+                e.hp -= e.pDmg; 
+                spawnParticles(e.x, e.y, '#00ff00', 2, 3); 
+            } 
+        }
         
-        ctx.beginPath(); ctx.arc(e.x, e.y, 10, 0, Math.PI*2); ctx.fillStyle = e.sTimer>0?'#0ff':e.pTimer>0?'#0f0':'#f00'; ctx.fill();
-        ctx.fillStyle='#0f0'; ctx.fillRect(e.x-10, e.y-18, 20*(e.hp/e.maxHp), 3);
+        // 移動処理 (スタン中は移動しない)
+        if (e.stunTimer <= 0) {
+            const a = Math.atan2(corePos.y - e.y, corePos.x - e.x);
+            e.x += Math.cos(a) * e.speed * e.slow; 
+            e.y += Math.sin(a) * e.speed * e.slow;
+        }
         
-        if(Math.hypot(e.x-corePos.x, e.y-corePos.y) < 20) { state.coreHp -= 5; updateUI(); state.enemies.splice(i,1); for(let k=0;k<10;k++) P(corePos.x, corePos.y, '#f00', 4); }
-        else if(e.hp <= 0) { state.coins += Math.floor(2 + state.wave*0.5); updateUI(); state.enemies.splice(i,1); for(let k=0;k<10;k++) P(e.x, e.y, '#ff0', 4); }
-    });
+        // 敵の描画
+        ctx.beginPath(); 
+        ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); 
+        
+        // 状態異常による色の変化
+        if (e.stunTimer > 0) ctx.fillStyle = '#ffffff';
+        else if (e.sTimer > 0) ctx.fillStyle = '#00ffff';
+        else if (e.pTimer > 0) ctx.fillStyle = '#00ff00';
+        else ctx.fillStyle = e.color;
+        
+        ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
+        ctx.fill(); ctx.shadowBlur = 0;
+        
+        // HPバーの描画
+        const hpRatio = Math.max(0, e.hp / e.maxHp);
+        ctx.fillStyle = '#333'; ctx.fillRect(e.x - 12, e.y - e.radius - 8, 24, 4);
+        ctx.fillStyle = '#0f0'; ctx.fillRect(e.x - 12, e.y - e.radius - 8, 24 * hpRatio, 4);
+        
+        // コア到達時の処理
+        if(Math.hypot(e.x - corePos.x, e.y - corePos.y) < 25) { 
+            state.coreHp -= e.maxHp * 0.2; // 敵の最大HPに比例したダメージ
+            updateUI(); 
+            state.enemies.splice(i, 1); 
+            spawnParticles(corePos.x, corePos.y, '#ff0000', 8, 30); 
+        }
+        // 撃破時の処理
+        else if(e.hp <= 0) { 
+            state.coins += e.reward; 
+            updateUI(); 
+            state.enemies.splice(i, 1); 
+            spawnParticles(e.x, e.y, '#ffea00', 6, 20); 
+        }
+    }
 
-    state.particles.forEach((p,i)=>{ p.x+=p.vx; p.y+=p.vy; p.life-=0.05; ctx.fillStyle=p.c; ctx.globalAlpha=Math.max(0,p.life); ctx.fillRect(p.x,p.y,3,3); ctx.globalAlpha=1; if(p.life<=0) state.particles.splice(i,1); });
+    // ----------------------------------------------------
+    // パーティクルの処理
+    // ----------------------------------------------------
+    for(let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
+        p.x += p.vx; p.y += p.vy; 
+        p.life -= 0.03; 
+        
+        ctx.fillStyle = p.color; 
+        ctx.globalAlpha = Math.max(0, p.life); 
+        ctx.fillRect(p.x, p.y, p.size, p.size); 
+        ctx.globalAlpha = 1; 
+        
+        if(p.life <= 0) state.particles.splice(i, 1); 
+    }
 
-    ctx.beginPath(); ctx.arc(corePos.x, corePos.y, 20, 0, Math.PI*2); ctx.fillStyle = '#0af'; ctx.shadowBlur = 20; ctx.shadowColor = '#0af'; ctx.fill(); ctx.shadowBlur = 0;
+    // ----------------------------------------------------
+    // 防衛コア（基地）の描画
+    // ----------------------------------------------------
+    ctx.beginPath(); 
+    ctx.arc(corePos.x, corePos.y, 25, 0, Math.PI*2); 
+    
+    // コアのHPに応じた色（ピンチになると赤くなる）
+    const coreHealthRatio = state.coreHp / 1000;
+    const coreColor = coreHealthRatio > 0.5 ? '#00aaff' : (coreHealthRatio > 0.2 ? '#ffaa00' : '#ff0000');
+    
+    ctx.fillStyle = coreColor; 
+    ctx.shadowBlur = 30 + Math.sin(frame * 0.1) * 10; // 鼓動エフェクト
+    ctx.shadowColor = coreColor; 
+    ctx.fill(); 
+    ctx.shadowBlur = 0;
+    
+    // コアの脈動リング
+    ctx.beginPath();
+    ctx.arc(corePos.x, corePos.y, 30 + Math.sin(frame * 0.05) * 5, 0, Math.PI*2);
+    ctx.strokeStyle = coreColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
 }
 
+// ゲーム初期化
 updateUI();
-loop();
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>

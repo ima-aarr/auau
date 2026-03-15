@@ -3,754 +3,918 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Node Defender: Ultimate</title>
+<title>Node Defender: Infinity</title>
 <style>
-    /* 基本設定 */
+    /* --- 基本設定 --- */
     body { margin: 0; overflow: hidden; background: #020205; color: #e0e0ff; font-family: 'Courier New', Courier, monospace; user-select: none; -webkit-user-select: none; touch-action: none; }
     canvas { display: block; }
-    #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; }
+    button { font-family: 'Courier New', Courier, monospace; }
     
-    /* サイドバー */
-    #sidebar { width: 340px; background: rgba(5, 5, 15, 0.95); border-right: 1px solid #00ffff; display: flex; flex-direction: column; pointer-events: auto; z-index: 10; height: 100vh; box-shadow: 2px 0 20px rgba(0, 255, 255, 0.15); }
+    /* --- 画面切り替え --- */
+    #homeScreen, #battleScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    #battleScreen { display: none; } /* 初期状態はホーム画面 */
+
+    /* --- ホーム画面（育成・メニュー） --- */
+    #homeScreen { background: radial-gradient(circle at center, #0a0a1a 0%, #000000 100%); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 5vh; z-index: 50; overflow-y: auto;}
+    .title { font-size: 48px; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 10px; font-weight: bold; text-align: center;}
+    .crystal-display { font-size: 24px; color: #ff00ff; text-shadow: 0 0 10px #ff00ff; margin-bottom: 30px; border: 2px solid #ff00ff; padding: 10px 20px; background: rgba(255,0,255,0.1); border-radius: 5px;}
+    
+    .tech-tree { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; width: 80%; max-width: 1000px; margin-bottom: 40px; }
+    .tech-card { background: #050510; border: 1px solid #1a334d; padding: 15px; border-left: 5px solid #ff00ff; transition: 0.2s; }
+    .tech-card:hover { border-color: #ff00ff; box-shadow: 0 0 15px rgba(255,0,255,0.3); }
+    .tech-name { font-size: 18px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; margin-bottom: 10px;}
+    .tech-desc { font-size: 12px; color: #aaa; margin-bottom: 15px; line-height: 1.4; height: 34px;}
+    .tech-btn { width: 100%; background: #220022; color: #ff00ff; border: 1px solid #ff00ff; padding: 10px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .tech-btn:hover:not(:disabled) { background: #ff00ff; color: #000; }
+    .tech-btn:disabled { border-color: #333; color: #555; background: transparent; cursor: not-allowed; }
+
+    .main-actions { display: flex; gap: 20px; margin-bottom: 50px; }
+    .btn-large { font-size: 20px; padding: 15px 40px; background: #002244; color: #00ffff; border: 2px solid #00ffff; cursor: pointer; text-transform: uppercase; font-weight: bold; transition: 0.3s; box-shadow: 0 0 15px rgba(0,255,255,0.2); }
+    .btn-large:hover { background: #00ffff; color: #000; box-shadow: 0 0 30px #00ffff; }
+
+    /* --- バトル画面UI --- */
+    #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; }
+    #sidebar { width: 340px; background: rgba(5, 5, 15, 0.95); border-right: 1px solid #00ffff; display: flex; flex-direction: column; pointer-events: auto; z-index: 10; height: 100vh; }
     #stats { padding: 15px; border-bottom: 1px solid #1a334d; background: #0a0a1a; }
-    .stat-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-bottom: 8px; color: #00ffff; letter-spacing: 1px; }
+    .stat-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-bottom: 8px; color: #00ffff; }
     .stat-row span { color: #ffffff; text-shadow: 0 0 8px #00ffff; }
     
-    /* ボタン類 */
-    #controls { padding: 10px; border-bottom: 1px solid #1a334d; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-    .btn { background: #001122; border: 1px solid #00ffff; color: #00ffff; padding: 10px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 11px; transition: all 0.2s; box-sizing: border-box; text-align: center; }
-    .btn:hover:not(:disabled) { background: #00ffff; color: #000; box-shadow: 0 0 10px #00ffff; }
-    .btn:disabled { border-color: #333; color: #555; cursor: not-allowed; background: transparent; }
-    #btnNextWave { grid-column: span 2; padding: 15px; font-size: 14px; background: #002244; }
+    #controls { padding: 10px; border-bottom: 1px solid #1a334d; display: grid; grid-template-columns: 1fr; gap: 5px; }
+    .btn { background: #001122; border: 1px solid #00ffff; color: #00ffff; padding: 10px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 11px; transition: 0.2s; }
+    .btn:hover:not(:disabled) { background: #00ffff; color: #000; }
+    .btn:disabled { border-color: #333; color: #555; cursor: not-allowed; }
+    #btnNextWave { padding: 15px; font-size: 14px; background: #002244; margin-bottom: 5px; }
+    .btn-retreat { border-color: #ff3366; color: #ff3366; }
+    .btn-retreat:hover { background: #ff3366; color: #000; box-shadow: 0 0 10px #ff3366;}
 
-    /* 建築メニュー */
-    #buildMenu { flex-grow: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: 1fr; gap: 8px; align-content: start;}
+    #buildMenu { flex-grow: 1; overflow-y: auto; padding: 10px; display: grid; gap: 8px; align-content: start;}
     #buildMenu::-webkit-scrollbar { width: 4px; }
     #buildMenu::-webkit-scrollbar-thumb { background: #00ffff; }
     
-    .node-card { background: #080814; border: 1px solid #1a334d; border-left: 4px solid #00ffff; padding: 8px; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
-    .node-card:hover { background: #112233; border-color: #00ffff; box-shadow: 0 0 10px rgba(0,255,255,0.2); }
-    .node-card.selected { background: #112244; border-color: #00ffff !important; box-shadow: 0 0 15px rgba(0,255,255,0.4); transform: scale(0.98); }
-    .node-card.disabled { opacity: 0.4; border-color: #333; border-left-color: #555; filter: grayscale(80%); }
+    .node-card { background: #080814; border: 1px solid #1a334d; border-left: 4px solid #00ffff; padding: 8px; cursor: pointer; transition: 0.2s; position: relative; }
+    .node-card:hover { background: #112233; border-color: #00ffff; }
+    .node-card.selected { background: #112244; border-color: #00ffff; box-shadow: 0 0 15px rgba(0,255,255,0.4); transform: scale(0.98); }
+    .node-card.disabled { opacity: 0.3; filter: grayscale(100%); }
     .n-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .n-name { font-weight: bold; font-size: 13px; color: #fff; text-shadow: 0 0 3px currentColor; }
+    .n-name { font-weight: bold; font-size: 13px; color: #fff; }
     .n-cost { color: #ffea00; font-weight: bold; font-size: 12px; }
     .n-desc { font-size: 10px; color: #aaa; margin-bottom: 4px; line-height: 1.2; }
-    .n-tags { font-size: 9px; color: #0f0; margin-bottom: 4px; }
-    
-    /* アクションパネル (タワー強化・カスタマイズ) */
-    #actionPanel { position: absolute; bottom: 20px; left: 360px; background: rgba(5, 5, 15, 0.95); padding: 15px; border: 1px solid #00ffff; pointer-events: auto; display: none; z-index: 10; width: 280px; box-shadow: 0 0 25px rgba(0, 255, 255, 0.15); backdrop-filter: blur(5px); }
+    .n-tags { font-size: 9px; color: #0f0; }
+
+    /* --- アクションパネル（タワー強化・設定） --- */
+    #actionPanel { position: absolute; bottom: 20px; left: 360px; background: rgba(5, 5, 15, 0.95); padding: 15px; border: 1px solid #00ffff; pointer-events: auto; display: none; z-index: 10; width: 280px; backdrop-filter: blur(5px); }
     #actionPanel h3 { margin: 0 0 10px 0; color: #00ffff; border-bottom: 1px solid #1a334d; padding-bottom: 5px; font-size: 16px; display: flex; justify-content: space-between;}
-    .ap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; font-size: 12px; }
-    .ap-grid div { color: #888; display: flex; justify-content: space-between; border-bottom: 1px dotted #333; padding-bottom: 2px; }
-    .ap-grid span { color: #fff; font-weight: bold; }
     
-    /* ターゲティング設定UI */
     .target-settings { margin-bottom: 10px; border: 1px solid #1a334d; padding: 5px; background: #050510; }
     .target-settings label { font-size: 10px; color: #aaa; display: block; margin-bottom: 4px; }
     .target-options { display: flex; gap: 2px; }
     .t-opt { flex: 1; font-size: 9px; padding: 4px 0; background: #111; border: 1px solid #333; color: #888; cursor: pointer; text-align: center; }
     .t-opt.active { background: #00ffff; color: #000; border-color: #00ffff; font-weight: bold; }
-    
+
+    .ap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; font-size: 12px; }
+    .ap-grid div { color: #888; display: flex; justify-content: space-between; border-bottom: 1px dotted #333; padding-bottom: 2px; }
+    .ap-grid span { color: #fff; font-weight: bold; }
     .ap-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-    .btn-sell { border-color: #ff3366; color: #ff3366; }
-    .btn-sell:hover:not(:disabled) { background: #ff3366; color: #000; box-shadow: 0 0 15px #ff3366; }
 
-    /* セーブ・ロード モーダル */
-    #saveLoadModal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0a1a; border: 2px solid #00ffff; padding: 20px; z-index: 100; pointer-events: auto; width: 400px; box-shadow: 0 0 30px rgba(0,255,255,0.3); }
-    #saveLoadModal h2 { margin-top: 0; color: #00ffff; font-size: 18px; }
-    #slTextarea { width: 100%; height: 80px; background: #000; color: #0f0; border: 1px solid #333; font-family: monospace; font-size: 10px; padding: 5px; box-sizing: border-box; resize: none; margin-bottom: 10px; }
-    .modal-btns { display: flex; gap: 10px; }
+    /* --- セーブ/ロード モーダル --- */
+    #saveLoadModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0a1a; border: 2px solid #ff00ff; padding: 25px; z-index: 100; width: 400px; text-align: center; box-shadow: 0 0 40px rgba(255,0,255,0.3); }
+    #saveLoadModal h2 { margin-top: 0; color: #ff00ff; }
+    #slTextarea { width: 100%; height: 100px; background: #000; color: #0f0; border: 1px solid #333; font-family: monospace; font-size: 11px; padding: 10px; box-sizing: border-box; resize: none; margin-bottom: 15px; }
+    .modal-btns { display: flex; gap: 10px; justify-content: center; }
 
-    /* スマホ対応 */
+    /* リザルト画面 */
+    #resultScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; flex-direction: column; align-items: center; justify-content: center; }
+    #resultTitle { font-size: 50px; color: #ff3366; margin-bottom: 20px; text-shadow: 0 0 20px #ff3366; }
+    #resultDetails { font-size: 20px; color: #fff; margin-bottom: 30px; text-align: center; line-height: 1.5; }
+    .earned-crystal { font-size: 30px; color: #ff00ff; font-weight: bold; text-shadow: 0 0 15px #ff00ff; margin-bottom: 40px; }
+
     @media (max-width: 768px) {
-        #sidebar { width: 160px; }
+        #sidebar { width: 180px; }
         .n-desc, .n-tags { display: none; }
-        .stat-row { font-size: 12px; }
-        .n-name { font-size: 11px; }
-        #actionPanel { left: 170px; bottom: 10px; padding: 10px; width: 200px; }
-        .ap-grid { font-size: 10px; }
-        #saveLoadModal { width: 90%; }
+        .tech-tree { width: 95%; }
+        #actionPanel { left: 190px; bottom: 10px; padding: 10px; width: 200px; }
     }
 </style>
 </head>
 <body>
 
-<div id="ui">
-    <div id="sidebar">
-        <div id="stats">
-            <div class="stat-row">WAVE <span><span id="uiWave">1</span></span></div>
-            <div class="stat-row">CORE <span><span id="uiCore">1000</span></span></div>
-            <div class="stat-row">CREDIT<span><span id="uiCoins">800</span></span></div>
-        </div>
-        <div id="controls">
-            <button id="btnNextWave" class="btn">START WAVE</button>
-            <button id="btnSaveUI" class="btn">SAVE</button>
-            <button id="btnLoadUI" class="btn">LOAD</button>
-        </div>
-        <div id="buildMenu"></div>
+<div id="homeScreen">
+    <div class="title">NODE DEFENDER<br><span style="font-size: 24px; color: #aaa;">INFINITY</span></div>
+    
+    <div class="crystal-display">DATA CRYSTALS: <span id="uiMetaCrystals">0</span> DC</div>
+    
+    <div class="main-actions">
+        <button id="btnStartGame" class="btn-large">SYSTEM START (BATTLE)</button>
+        <button id="btnDataLink" class="btn-large" style="background:#220022; border-color:#ff00ff; color:#ff00ff;">DATA LINK (SAVE/LOAD)</button>
     </div>
+
+    <h2 style="color: #ff00ff; border-bottom: 1px solid #ff00ff; width: 80%; max-width: 1000px; padding-bottom: 10px;">PERMANENT UPGRADES</h2>
+    <div class="tech-tree" id="techTree">
+        </div>
 </div>
 
-<div id="actionPanel">
-    <h3><span id="apName">NODE</span><span id="apLvl" style="color:#fff;">Lv.1</span></h3>
-    
-    <div class="target-settings" id="targetSettings">
-        <label>TARGETING SYSTEM</label>
-        <div class="target-options">
-            <div class="t-opt active" data-tgt="first">FIRST</div>
-            <div class="t-opt" data-tgt="close">CLOSE</div>
-            <div class="t-opt" data-tgt="strong">STRONG</div>
-            <div class="t-opt" data-tgt="weak">WEAK</div>
+<div id="battleScreen">
+    <div id="ui">
+        <div id="sidebar">
+            <div id="stats">
+                <div class="stat-row">WAVE <span><span id="uiWave">1</span></span></div>
+                <div class="stat-row">CORE HP <span><span id="uiCore">1000</span></span></div>
+                <div class="stat-row">CREDIT <span><span id="uiCoins">1000</span></span></div>
+            </div>
+            <div id="controls">
+                <button id="btnNextWave" class="btn">START WAVE</button>
+                <button id="btnRetreat" class="btn btn-retreat">ABORT & RETURN</button>
+            </div>
+            <div id="buildMenu"></div>
         </div>
     </div>
 
-    <div class="ap-grid">
-        <div>DMG <span id="apDmg">0</span></div>
-        <div>RNG <span id="apRng">0</span></div>
-        <div>SPD <span id="apRate">0</span></div>
-        <div>EFF <span id="apEff">-</span></div>
+    <div id="actionPanel">
+        <h3><span id="apName">NODE</span><span id="apLvl" style="color:#fff;">Lv.1</span></h3>
+        
+        <div class="target-settings" id="targetSettings">
+            <label>TARGETING ALGORITHM</label>
+            <div class="target-options">
+                <div class="t-opt active" data-tgt="first">FIRST</div>
+                <div class="t-opt" data-tgt="close">CLOSE</div>
+                <div class="t-opt" data-tgt="strong">STRONG</div>
+                <div class="t-opt" data-tgt="weak">WEAK</div>
+            </div>
+        </div>
+
+        <div class="ap-grid">
+            <div>DMG <span id="apDmg">0</span></div>
+            <div>RNG <span id="apRng">0</span></div>
+            <div>SPD <span id="apRate">0</span></div>
+            <div>EFF <span id="apEff">-</span></div>
+        </div>
+        <div class="ap-actions">
+            <button id="btnUpg" class="btn">UPGRADE <br><span id="apCost" style="font-size:10px;">$0</span></button>
+            <button id="btnSell" class="btn btn-retreat">SELL <br><span id="apSell" style="font-size:10px;">$0</span></button>
+            <button id="btnClose" class="btn" style="border-color:#555; color:#aaa; grid-column: span 2;">CLOSE</button>
+        </div>
     </div>
-    <div class="ap-actions">
-        <button id="btnUpg" class="btn">UPGRADE <br><span id="apCost" style="font-size:10px;">$0</span></button>
-        <button id="btnSell" class="btn btn-sell">SELL <br><span id="apSell" style="font-size:10px;">$0</span></button>
-        <button id="btnClose" class="btn" style="border-color:#555; color:#aaa; grid-column: span 2;">CLOSE</button>
-    </div>
+    
+    <canvas id="gameCanvas"></canvas>
 </div>
 
 <div id="saveLoadModal">
     <h2 id="slTitle">DATA LINK</h2>
-    <p style="font-size: 12px; color: #aaa;">セーブコードをコピー、または貼り付けてください。</p>
-    <textarea id="slTextarea"></textarea>
+    <p style="font-size: 12px; color: #aaa; margin-bottom:15px;">※クリスタルと強化状態が保存されます。</p>
+    <textarea id="slTextarea" placeholder="ここにセーブコードを貼り付けます..."></textarea>
     <div class="modal-btns">
-        <button id="btnConfirmSL" class="btn">EXECUTE</button>
-        <button id="btnCancelSL" class="btn" style="border-color:#555; color:#aaa;">CANCEL</button>
+        <button id="btnCopySave" class="btn" style="border-color:#ff00ff; color:#ff00ff;">COPY CODE</button>
+        <button id="btnLoadData" class="btn" style="border-color:#00ffff; color:#00ffff;">LOAD CODE</button>
+        <button id="btnCancelSL" class="btn" style="border-color:#555; color:#aaa;">CLOSE</button>
     </div>
 </div>
 
-<canvas></canvas>
+<div id="resultScreen">
+    <div id="resultTitle">SYSTEM DOWN</div>
+    <div id="resultDetails">
+        REACHED WAVE: <span id="resWave" style="color:#00ffff; font-weight:bold;">1</span><br>
+        ENEMIES DESTROYED: <span id="resKills" style="color:#00ffff; font-weight:bold;">0</span>
+    </div>
+    <div style="color:#aaa; font-size:14px; margin-bottom:5px;">EARNED DATA CRYSTALS</div>
+    <div class="earned-crystal">+<span id="resCrystals">0</span> DC</div>
+    <button id="btnReturnHome" class="btn-large" style="font-size: 16px;">RETURN TO BASE</button>
+</div>
 
 <script>
-const canvas = document.querySelector('canvas');
+// --- 【パート2：データ定義、メタプログレッション、セーブ・ロード】 ---
+
+// 🚀 超拡張！全15種類の防衛タワー（ノード）データ
+// 新たに SHOTGUN, BLACKHOLE, MISSILE が追加されました！
+const NODE_TYPES = {
+    blaster:  { name: 'BLASTER', cost: 50,  dmg: 15, range: 120, rate: 30,  color: '#ffffff', type: 'normal', desc: '安価で扱いやすい基本砲台。', tags: '単体 / 標準', req: null },
+    vulcan:   { name: 'VULCAN',  cost: 120, dmg: 4,  range: 100, rate: 5,   color: '#ffff00', type: 'normal', desc: '圧倒的な連射速度で弾幕を張る。', tags: '単体 / 超速', req: 'tower_vulcan' },
+    shotgun:  { name: 'SHOTGUN', cost: 180, dmg: 10, range: 90,  rate: 45,  color: '#dddddd', type: 'spread', count: 5, spread: 0.4, desc: '近距離に複数の散弾を同時に放つ。', tags: '複数 / 散弾', req: 'tower_shotgun' },
+    mortar:   { name: 'MORTAR',  cost: 200, dmg: 40, range: 160, rate: 90,  color: '#ff5500', type: 'splash', radius: 80, desc: '着弾時に爆発し、範囲内の敵を一掃する。', tags: '範囲 / 爆発', req: 'tower_mortar' },
+    cryo:     { name: 'CRYO',    cost: 160, dmg: 5,  range: 130, rate: 60,  color: '#00ffff', type: 'slow', factor: 0.4, time: 180, desc: '冷却弾で敵の移動速度を大幅に下げる。', tags: '妨害 / 鈍足', req: 'tower_cryo' },
+    toxin:    { name: 'TOXIN',   cost: 220, dmg: 2,  range: 140, rate: 45,  color: '#00ff00', type: 'poison', dot: 10, dotTime: 300, desc: '猛毒を付与し、長時間じわじわと削る。', tags: '継続 / 毒', req: 'tower_toxin' },
+    railgun:  { name: 'RAILGUN', cost: 250, dmg: 180,range: 400, rate: 120, color: '#ff00ff', type: 'normal', desc: '超長距離からの一撃必殺。装填は遅い。', tags: '単体 / 狙撃', req: 'tower_railgun' },
+    laser:    { name: 'LASER',   cost: 300, dmg: 3,  range: 220, rate: 1,   color: '#ff0055', type: 'beam', desc: '途切れることのない高熱レーザーを照射。', tags: '単体 / 照射', req: 'tower_laser' },
+    miner:    { name: 'MINER',   cost: 300, dmg: 0,  range: 0,   rate: 0,   color: '#ffaa00', type: 'income', value: 80, desc: 'ウェーブ終了時に多額のクレジットを生成。', tags: '支援 / 資金', req: 'tower_miner' },
+    emp:      { name: 'EMP',     cost: 350, dmg: 5,  range: 120, rate: 150, color: '#aaaaaa', type: 'stun', time: 120, desc: '電磁パルスで周囲の敵を一定時間完全に麻痺。', tags: '範囲 / 停止', req: 'tower_emp' },
+    tesla:    { name: 'TESLA',   cost: 400, dmg: 35, range: 150, rate: 70,  color: '#00aaff', type: 'chain', chainCount: 4, desc: '敵から敵へ連鎖する電撃を放つ。', tags: '複数 / 連鎖雷', req: 'tower_tesla' },
+    buffer:   { name: 'OVERCLOCK',cost:450, dmg: 0,  range: 110, rate: 0,   color: '#ffbbff', type: 'buff', buffRate: 0.70, buffDmg: 1.4, desc: '周囲のタワーの攻撃力と連射速度を永続強化。', tags: '支援 / 強化', req: 'tower_buffer' },
+    plasma:   { name: 'PLASMA',  cost: 500, dmg: 10, range: 180, rate: 80,  color: '#ff2222', type: 'percent', pct: 0.06, desc: '敵の最大HPの6%を追加ダメージとして与える。', tags: '単体 / 割合ダメ', req: 'tower_plasma' },
+    blackhole:{ name: 'BLACKHOLE',cost:600, dmg: 5,  range: 180, rate: 200, color: '#4b0082', type: 'pull', pullTime: 120, pullForce: 2, desc: '敵を中心部に強烈に吸い寄せる重力場を生成。', tags: '妨害 / 吸引', req: 'tower_blackhole' },
+    missile:  { name: 'MISSILE', cost: 750, dmg: 100,range: 9999,rate: 180, color: '#ff8800', type: 'homing', desc: '画面内の敵を確実に追尾する強力なミサイル。', tags: '単体 / 必中', req: 'tower_missile' }
+};
+
+// 💎 永続強化（メタプログレッション）のツリーデータ
+// これらをクリスタルで強化していくことで、基礎ステータスが上がったり新しいタワーが解禁されます。
+const UPGRADES = {
+    core_hp:      { id: 'core_hp', name: 'CORE ARMOR', desc: '初期コアHPを増加 (+200/Lv)', baseCost: 10, costMult: 1.5, maxLv: 50 },
+    start_credit: { id: 'start_credit', name: 'INITIAL FUNDING', desc: 'ゲーム開始時の初期資金を増加 (+200/Lv)', baseCost: 15, costMult: 1.6, maxLv: 30 },
+    crystal_gain: { id: 'crystal_gain', name: 'CRYSTAL EXTRACTION', desc: '敵討伐時のクリスタル獲得量が上昇 (+10%/Lv)', baseCost: 50, costMult: 2.0, maxLv: 20 },
+    global_dmg:   { id: 'global_dmg', name: 'WEAPON CALIBRATION', desc: '全タワーの基本攻撃力が底上げされる (+5%/Lv)', baseCost: 80, costMult: 1.8, maxLv: 30 },
+    global_rng:   { id: 'global_rng', name: 'SENSOR EXPANSION', desc: '全タワーの基本射程が拡大する (+3%/Lv)', baseCost: 100, costMult: 1.7, maxLv: 15 },
+    
+    // 以下、タワーのアンロック（Lv1で解放）
+    tower_vulcan: { id: 'tower_vulcan', name: 'UNLOCK: VULCAN', desc: '超速連射タワー「VULCAN」を解禁。', baseCost: 20, costMult: 1, maxLv: 1 },
+    tower_shotgun:{ id: 'tower_shotgun', name: 'UNLOCK: SHOTGUN', desc: '散弾タワー「SHOTGUN」を解禁。', baseCost: 50, costMult: 1, maxLv: 1 },
+    tower_mortar: { id: 'tower_mortar', name: 'UNLOCK: MORTAR', desc: '範囲爆発タワー「MORTAR」を解禁。', baseCost: 80, costMult: 1, maxLv: 1 },
+    tower_cryo:   { id: 'tower_cryo', name: 'UNLOCK: CRYO', desc: '鈍足付与タワー「CRYO」を解禁。', baseCost: 120, costMult: 1, maxLv: 1 },
+    tower_toxin:  { id: 'tower_toxin', name: 'UNLOCK: TOXIN', desc: '毒付与タワー「TOXIN」を解禁。', baseCost: 180, costMult: 1, maxLv: 1 },
+    tower_railgun:{ id: 'tower_railgun', name: 'UNLOCK: RAILGUN', desc: '狙撃タワー「RAILGUN」を解禁。', baseCost: 250, costMult: 1, maxLv: 1 },
+    tower_laser:  { id: 'tower_laser', name: 'UNLOCK: LASER', desc: '照射タワー「LASER」を解禁。', baseCost: 350, costMult: 1, maxLv: 1 },
+    tower_miner:  { id: 'tower_miner', name: 'UNLOCK: MINER', desc: '資金調達タワー「MINER」を解禁。', baseCost: 500, costMult: 1, maxLv: 1 },
+    tower_emp:    { id: 'tower_emp', name: 'UNLOCK: EMP', desc: '麻痺タワー「EMP」を解禁。', baseCost: 700, costMult: 1, maxLv: 1 },
+    tower_tesla:  { id: 'tower_tesla', name: 'UNLOCK: TESLA', desc: '連鎖雷タワー「TESLA」を解禁。', baseCost: 1000, costMult: 1, maxLv: 1 },
+    tower_buffer: { id: 'tower_buffer', name: 'UNLOCK: OVERCLOCK', desc: '強化タワー「OVERCLOCK」を解禁。', baseCost: 1500, costMult: 1, maxLv: 1 },
+    tower_plasma: { id: 'tower_plasma', name: 'UNLOCK: PLASMA', desc: '割合ダメタワー「PLASMA」を解禁。', baseCost: 2500, costMult: 1, maxLv: 1 },
+    tower_blackhole:{ id: 'tower_blackhole', name: 'UNLOCK: BLACKHOLE', desc: '吸引タワー「BLACKHOLE」を解禁。', baseCost: 4000, costMult: 1, maxLv: 1 },
+    tower_missile:{ id: 'tower_missile', name: 'UNLOCK: MISSILE', desc: '必中タワー「MISSILE」を解禁。', baseCost: 8000, costMult: 1, maxLv: 1 }
+};
+
+// プレイヤーのアカウントデータ（セーブされるデータ）
+let metaState = {
+    crystals: 0,
+    upgrades: {} // { core_hp: 2, start_credit: 1, tower_vulcan: 1 ... } のように保存
+};
+
+// 1ゲームプレイ中の状態
+let gameState = {
+    wave: 1, coreHp: 1000, coins: 1000, waveActive: false,
+    nodes: [], enemies: [], bullets: [], particles: [],
+    earnedCrystalsThisRun: 0 // 今回のプレイで稼いだクリスタル
+};
+
+// --- DOM要素の取得 ---
+const UI = {
+    home: document.getElementById('homeScreen'),
+    battle: document.getElementById('battleScreen'),
+    result: document.getElementById('resultScreen'),
+    techTree: document.getElementById('techTree'),
+    metaCrystals: document.getElementById('uiMetaCrystals'),
+    
+    // Modal
+    slModal: document.getElementById('saveLoadModal'),
+    slText: document.getElementById('slTextarea'),
+    btnSaveMode: document.getElementById('btnDataLink'),
+    btnCopy: document.getElementById('btnCopySave'),
+    btnLoad: document.getElementById('btnLoadData'),
+    btnCancelSL: document.getElementById('btnCancelSL'),
+};
+
+// --- セーブ＆ロード処理（ローカルストレージ ＋ 文字列） ---
+// ゲーム起動時に自動ロード（ローカルストレージから）
+function loadFromLocal() {
+    const saved = localStorage.getItem('NodeDefenderInfinity');
+    if(saved) {
+        try {
+            metaState = JSON.parse(saved);
+        } catch(e) { console.error("Save data broken"); }
+    }
+    // upgradesに未定義のものがあれば初期化（0）
+    Object.keys(UPGRADES).forEach(key => {
+        if(metaState.upgrades[key] === undefined) metaState.upgrades[key] = 0;
+    });
+    updateHomeUI();
+}
+
+function saveToLocal() {
+    localStorage.setItem('NodeDefenderInfinity', JSON.stringify(metaState));
+}
+
+// 画面切り替えイベント
+UI.btnSaveMode.onclick = () => {
+    UI.slText.value = btoa(JSON.stringify(metaState)); // セーブ用文字列を生成して配置
+    UI.slModal.style.display = 'block';
+};
+UI.btnCancelSL.onclick = () => UI.slModal.style.display = 'none';
+
+UI.btnCopy.onclick = () => {
+    UI.slText.select();
+    document.execCommand('copy');
+    alert('セーブコードをコピーしました！どこかメモ帳などに貼り付けて保管してください。');
+};
+
+UI.btnLoad.onclick = () => {
+    try {
+        const decoded = atob(UI.slText.value.trim());
+        const parsed = JSON.parse(decoded);
+        if(parsed && parsed.upgrades !== undefined) {
+            metaState = parsed;
+            saveToLocal();
+            loadFromLocal();
+            alert('ロードに成功しました！データを復元しました。');
+            UI.slModal.style.display = 'none';
+        } else {
+            alert('コードが無効です。');
+        }
+    } catch(e) {
+        alert('読み込みエラー。正しいコードを入力してください。');
+    }
+};
+    // --- 【パート3：ホーム画面のUI制御・強化システム・画面遷移】 ---
+
+// 育成ツリー（ホーム画面）の描画と更新
+function updateHomeUI() {
+    UI.metaCrystals.innerText = metaState.crystals;
+    UI.techTree.innerHTML = ''; // 一旦クリア
+
+    // 定義されたアップグレード項目をループしてカードを生成
+    for (const key in UPGRADES) {
+        const upg = UPGRADES[key];
+        const currentLv = metaState.upgrades[key] || 0;
+        const isMax = currentLv >= upg.maxLv;
+        // コスト計算：基本コスト * (倍率 ^ 現在レベル)
+        const cost = Math.floor(upg.baseCost * Math.pow(upg.costMult, currentLv));
+
+        const lvText = isMax ? 'MAX' : `Lv.${currentLv}`;
+        // クリスタルが足りているか、最大レベルに達していないか判定
+        const canBuy = !isMax && metaState.crystals >= cost;
+
+        const card = document.createElement('div');
+        card.className = 'tech-card';
+        card.innerHTML = `
+            <div class="tech-name"><span>${upg.name}</span> <span style="color:#00ffff">${lvText}</span></div>
+            <div class="tech-desc">${upg.desc}</div>
+            <button class="tech-btn" ${canBuy ? '' : 'disabled'} onclick="buyUpgrade('${key}')">
+                ${isMax ? 'COMPLETED' : `UPGRADE: ${cost} DC`}
+            </button>
+        `;
+        UI.techTree.appendChild(card);
+    }
+}
+
+// 強化ボタンが押された時の処理（HTML側から呼ばれるようグローバル関数にする）
+window.buyUpgrade = function(key) {
+    const upg = UPGRADES[key];
+    const currentLv = metaState.upgrades[key] || 0;
+    if (currentLv >= upg.maxLv) return; // 既にMAXなら弾く
+
+    const cost = Math.floor(upg.baseCost * Math.pow(upg.costMult, currentLv));
+    if (metaState.crystals >= cost) {
+        // クリスタルを消費してレベルアップ
+        metaState.crystals -= cost;
+        metaState.upgrades[key] = currentLv + 1;
+        saveToLocal(); // すぐにセーブ
+        updateHomeUI(); // 画面を更新
+    }
+};
+
+// --- 画面遷移とゲームのライフサイクル ---
+
+// ゲーム（バトル）開始ボタン
+document.getElementById('btnStartGame').onclick = () => {
+    UI.home.style.display = 'none';
+    UI.result.style.display = 'none';
+    UI.battle.style.display = 'block';
+    
+    // ※この initGame 関数は次のパートで定義します
+    initGame(); 
+};
+
+// リザルト画面からホームへ戻るボタン
+document.getElementById('btnReturnHome').onclick = () => {
+    UI.result.style.display = 'none';
+    UI.battle.style.display = 'none';
+    UI.home.style.display = 'flex'; // ホーム画面を表示
+    
+    saveToLocal(); // バトルで得たクリスタルをセーブ
+    updateHomeUI(); // ホーム画面のUIを最新状態に更新
+};
+
+// 撤退ボタン（バトル画面中、諦めて帰る場合）
+document.getElementById('btnRetreat').onclick = () => {
+    if(confirm("システムを強制終了し、基地へ帰還しますか？\n（現在までに獲得したクリスタルは持ち帰れます）")) {
+        // ※この gameOver 関数は後のパートで定義します
+        gameOver(); 
+    }
+};
+
+// 初回読み込み時の実行
+loadFromLocal(); // セーブデータがあれば読み込み、なければ初期化して updateHomeUI() を呼ぶ
+    // --- 【パート4：バトル画面の初期化、タワー配置、アップグレード処理】 ---
+
+const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const gridSize = 40;
 let sidebarWidth = 340;
-let cols, rows;
-
-// 画面サイズ調整とコア位置の計算
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    sidebarWidth = window.innerWidth <= 768 ? 160 : 340;
-    cols = Math.floor(canvas.width / gridSize);
-    rows = Math.floor(canvas.height / gridSize);
-    updateCorePos();
-}
-window.addEventListener('resize', resize);
-
-const corePos = { x: 0, y: 0 };
-function updateCorePos() {
-    corePos.x = Math.floor(((canvas.width - sidebarWidth) / 2 + sidebarWidth) / gridSize) * gridSize + gridSize / 2;
-    corePos.y = Math.floor(canvas.height / 2 / gridSize) * gridSize + gridSize / 2;
-}
-
-// 🚀 超拡張！全12種類の防衛タワー（ノード）データ
-const NODE_TYPES = {
-    blaster:  { name: 'BLASTER', cost: 50,  dmg: 15, range: 120, rate: 30,  color: '#ffffff', type: 'normal', desc: '安価で扱いやすい基本砲台。', tags: '単体 / 標準' },
-    vulcan:   { name: 'VULCAN',  cost: 120, dmg: 4,  range: 100, rate: 5,   color: '#ffff00', type: 'normal', desc: '圧倒的な連射速度で弾幕を張る。', tags: '単体 / 超速' },
-    railgun:  { name: 'RAILGUN', cost: 250, dmg: 150,range: 400, rate: 120, color: '#ff00ff', type: 'normal', desc: '超長距離からの一撃必殺。装填は遅い。', tags: '単体 / 狙撃' },
-    mortar:   { name: 'MORTAR',  cost: 200, dmg: 40, range: 160, rate: 90,  color: '#ff5500', type: 'splash', radius: 75, desc: '着弾時に爆発し、範囲内の敵を一掃する。', tags: '範囲 / 爆発' },
-    cryo:     { name: 'CRYO',    cost: 160, dmg: 5,  range: 130, rate: 60,  color: '#00ffff', type: 'slow', factor: 0.4, time: 180, desc: '冷却弾で敵の移動速度を大幅に下げる。', tags: '妨害 / 鈍足' },
-    toxin:    { name: 'TOXIN',   cost: 220, dmg: 2,  range: 140, rate: 45,  color: '#00ff00', type: 'poison', dot: 8, dotTime: 300, desc: '猛毒を付与し、長時間じわじわと削る。', tags: '継続 / 毒' },
-    laser:    { name: 'LASER',   cost: 300, dmg: 2.5,range: 220, rate: 1,   color: '#ff0055', type: 'beam', desc: '途切れることのない高熱レーザーを照射。', tags: '単体 / 照射' },
-    emp:      { name: 'EMP',     cost: 350, dmg: 5,  range: 120, rate: 150, color: '#aaaaaa', type: 'stun', time: 120, desc: '電磁パルスで周囲の敵を一定時間完全に麻痺。', tags: '範囲 / 停止' },
-    miner:    { name: 'MINER',   cost: 300, dmg: 0,  range: 0,   rate: 0,   color: '#ffaa00', type: 'income', value: 50, desc: 'ウェーブ終了時に多額のクレジットを生成。', tags: '支援 / 資金' },
-    tesla:    { name: 'TESLA',   cost: 400, dmg: 30, range: 150, rate: 70,  color: '#00aaff', type: 'chain', chainCount: 3, desc: '敵から敵へ連鎖する電撃を放つ。', tags: '複数 / 連鎖雷' },
-    buffer:   { name: 'OVERCLOCK',cost: 450, dmg: 0, range: 110, rate: 0,   color: '#ffbbff', type: 'buff', buffRate: 0.75, buffDmg: 1.3, desc: '周囲のタワーの攻撃力と連射速度を永続強化。', tags: '支援 / 強化' },
-    plasma:   { name: 'PLASMA',  cost: 500, dmg: 10, range: 180, rate: 80,  color: '#ff2222', type: 'percent', pct: 0.05, desc: '敵の最大HPの5%を追加ダメージとして与える。', tags: '単体 / 割合ダメ' }
-};
-
-// ゲームの全状態を管理するオブジェクト（セーブ・ロードの要）
-let state = { 
-    wave: 1, 
-    coreHp: 1000, 
-    coins: 800, // 初期資金を少しアップ
-    waveActive: false, 
-    nodes: [], // 配置されたタワーの配列
-    enemies: [], 
-    bullets: [], 
-    particles: [] 
-};
-
-// 制御用変数
 let selectedBuildType = null;
 let selectedNode = null;
 let frame = 0;
 let enemySpawnTimer = 0;
 let enemiesToSpawn = 0;
 let waveEnemyMaxHpBase = 35;
-let slMode = ''; // 'save' or 'load'
 
-// DOM要素の取得を変数にまとめる
-const els = {
-    wave: document.getElementById('uiWave'), core: document.getElementById('uiCore'), coins: document.getElementById('uiCoins'),
-    btnNext: document.getElementById('btnNextWave'), buildMenu: document.getElementById('buildMenu'),
-    btnSave: document.getElementById('btnSaveUI'), btnLoad: document.getElementById('btnLoadUI'),
-    ap: document.getElementById('actionPanel'), apName: document.getElementById('apName'), apLvl: document.getElementById('apLvl'),
-    apDmg: document.getElementById('apDmg'), apRng: document.getElementById('apRng'), apRate: document.getElementById('apRate'), apEff: document.getElementById('apEff'),
-    apCost: document.getElementById('apCost'), apSell: document.getElementById('apSell'),
-    btnUpg: document.getElementById('btnUpg'), btnSell: document.getElementById('btnSell'), btnClose: document.getElementById('btnClose'),
-    tgtSettings: document.getElementById('targetSettings'), tgtOpts: document.querySelectorAll('.t-opt'),
-    slModal: document.getElementById('saveLoadModal'), slTitle: document.getElementById('slTitle'), slText: document.getElementById('slTextarea'),
-    btnConfSL: document.getElementById('btnConfirmSL'), btnCancSL: document.getElementById('btnCancelSL')
-};
+// 画面リサイズとコア位置の計算
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    sidebarWidth = window.innerWidth <= 768 ? 180 : 340;
+    updateCorePos();
+}
+window.addEventListener('resize', resize);
 
-// 初期化呼び出し
-resize();
-    // --- パート3：UI更新、メニュー生成、セーブ＆ロード、クリック判定 ---
+let corePos = { x: 0, y: 0 };
+function updateCorePos() {
+    corePos.x = Math.floor(((canvas.width - sidebarWidth) / 2 + sidebarWidth) / gridSize) * gridSize + gridSize / 2;
+    corePos.y = Math.floor(canvas.height / 2 / gridSize) * gridSize + gridSize / 2;
+}
 
-function updateUI() {
-    els.wave.innerText = state.wave;
-    els.core.innerText = Math.floor(state.coreHp);
-    els.coins.innerText = Math.floor(state.coins);
+// バトル画面の初期化（ホーム画面から移行したときに呼ばれる）
+function initGame() {
+    resize();
+    // メタ強化（永続強化）のボーナスを計算
+    const bonusHp = (metaState.upgrades.core_hp || 0) * 200;
+    const bonusCoins = (metaState.upgrades.start_credit || 0) * 200;
+
+    gameState = {
+        wave: 1,
+        coreHp: 1000 + bonusHp,
+        maxCoreHp: 1000 + bonusHp,
+        coins: 1000 + bonusCoins,
+        waveActive: false,
+        nodes: [], enemies: [], bullets: [], particles: [],
+        earnedCrystalsThisRun: 0
+    };
+    enemySpawnTimer = 0;
+    enemiesToSpawn = 0;
+    frame = 0;
+    selectedBuildType = null;
+
+    updateBattleMenu(); // 建築メニューの生成（解禁状況を反映）
+    updateBattleUI();
+    closeActionPanel();
     
-    // 所持金不足のカードを暗くする
-    document.querySelectorAll('.node-card').forEach(card => {
-        const cost = parseInt(card.dataset.cost);
-        if(state.coins < cost) card.classList.add('disabled');
-        else card.classList.remove('disabled');
-    });
-
-    if(state.coreHp <= 0) {
-        alert('SYSTEM DOWN... コアが破壊されました。ページをリロードしてください。');
+    // メインループ開始（多重起動防止）
+    if(!window.loopActive) {
+        window.loopActive = true;
+        requestAnimationFrame(gameLoop);
     }
 }
 
-// 建築メニューの生成
-Object.keys(NODE_TYPES).forEach(key => {
-    const t = NODE_TYPES[key];
-    const card = document.createElement('div');
-    card.className = 'node-card'; card.dataset.type = key; card.dataset.cost = t.cost;
-    card.innerHTML = `
-        <div class="n-header">
-            <span class="n-name" style="color:${t.color}">${t.name}</span>
-            <span class="n-cost">$${t.cost}</span>
-        </div>
-        <div class="n-tags">${t.tags}</div>
-        <div class="n-desc">${t.desc}</div>
-    `;
+// 建築メニューの生成（解禁されているタワーのみ選択可能）
+function updateBattleMenu() {
+    const buildMenu = document.getElementById('buildMenu');
+    buildMenu.innerHTML = '';
     
-    // タワー選択（クリック）時の処理
-    card.onclick = () => {
-        document.querySelectorAll('.node-card').forEach(b => b.classList.remove('selected'));
-        if(selectedBuildType === key) { 
-            selectedBuildType = null; 
-        } else { 
-            card.classList.add('selected'); 
-            selectedBuildType = key; 
-            closeActionPanel(); 
+    Object.keys(NODE_TYPES).forEach(key => {
+        const t = NODE_TYPES[key];
+        // 必須条件(req)がない、またはツリーでLv1以上に強化されているか判定
+        const isUnlocked = t.req === null || (metaState.upgrades[t.req] && metaState.upgrades[t.req] > 0);
+        
+        const card = document.createElement('div');
+        card.className = 'node-card ' + (isUnlocked ? '' : 'disabled');
+        card.dataset.type = key;
+        card.dataset.cost = t.cost;
+        card.innerHTML = `
+            <div class="n-header">
+                <span class="n-name" style="color:${t.color}">${isUnlocked ? t.name : '??? (LOCKED)'}</span>
+                <span class="n-cost">$${t.cost}</span>
+            </div>
+            ${isUnlocked ? `<div class="n-tags">${t.tags}</div><div class="n-desc">${t.desc}</div>` : `<div class="n-desc" style="color:#ff3366">※ホーム画面で解禁してください</div>`}
+        `;
+        
+        card.onclick = () => {
+            if(!isUnlocked) return; // 未解禁なら反応しない
+            document.querySelectorAll('#buildMenu .node-card').forEach(b => b.classList.remove('selected'));
+            if(selectedBuildType === key) {
+                selectedBuildType = null;
+            } else {
+                card.classList.add('selected');
+                selectedBuildType = key;
+                closeActionPanel();
+            }
+        };
+        buildMenu.appendChild(card);
+    });
+}
+
+function updateBattleUI() {
+    document.getElementById('uiWave').innerText = gameState.wave;
+    document.getElementById('uiCore').innerText = Math.floor(gameState.coreHp);
+    document.getElementById('uiCoins').innerText = Math.floor(gameState.coins);
+    
+    // コスト不足のタワーを暗くする
+    document.querySelectorAll('#buildMenu .node-card:not(.disabled)').forEach(card => {
+        const cost = parseInt(card.dataset.cost);
+        card.style.opacity = gameState.coins < cost ? '0.4' : '1';
+    });
+}
+
+// キャンバス上をクリックしてタワーを配置
+canvas.addEventListener('pointerdown', e => {
+    if(e.clientX < sidebarWidth) return;
+    const gx = Math.floor(e.clientX / gridSize) * gridSize + gridSize / 2;
+    const gy = Math.floor(e.clientY / gridSize) * gridSize + gridSize / 2;
+    if(gx === corePos.x && gy === corePos.y) return;
+
+    const existingNode = gameState.nodes.find(n => n.x === gx && n.y === gy);
+    
+    if(selectedBuildType) {
+        if(!existingNode) {
+            const cost = NODE_TYPES[selectedBuildType].cost;
+            if(gameState.coins >= cost) {
+                gameState.coins -= cost;
+                gameState.nodes.push({ x: gx, y: gy, type: selectedBuildType, lvl: 1, cd: 0, targetMode: 'first' });
+                updateBattleUI();
+                // 配置エフェクト
+                for(let i=0;i<10;i++) gameState.particles.push({x:gx, y:gy, vx:(Math.random()-0.5)*5, vy:(Math.random()-0.5)*5, life:1, color:NODE_TYPES[selectedBuildType].color, size:2});
+            }
         }
-    };
-    els.buildMenu.appendChild(card);
+    } else {
+        if(existingNode) openActionPanel(existingNode); else closeActionPanel();
+    }
 });
 
-// アクションパネル（配置済みタワー選択時）の開閉
+// 配置済みタワーを選択した時のパネル
+const apUI = {
+    panel: document.getElementById('actionPanel'), name: document.getElementById('apName'), lvl: document.getElementById('apLvl'),
+    dmg: document.getElementById('apDmg'), rng: document.getElementById('apRng'), rate: document.getElementById('apRate'), eff: document.getElementById('apEff'),
+    cost: document.getElementById('apCost'), sell: document.getElementById('apSell'),
+    btnUpg: document.getElementById('btnUpg'), btnSell: document.getElementById('btnSell'), btnClose: document.getElementById('btnClose'),
+    tgtSettings: document.getElementById('targetSettings'), tgtOpts: document.querySelectorAll('.t-opt')
+};
+
 function openActionPanel(node) {
-    selectedNode = node; 
-    selectedBuildType = null;
-    document.querySelectorAll('.node-card').forEach(b => b.classList.remove('selected'));
+    selectedNode = node; selectedBuildType = null;
+    document.querySelectorAll('#buildMenu .node-card').forEach(b => b.classList.remove('selected'));
     
     const t = NODE_TYPES[node.type];
-    els.apName.innerText = t.name; 
-    els.apName.style.color = t.color; 
-    els.apLvl.innerText = 'Lv.' + node.lvl;
+    apUI.name.innerText = t.name; apUI.name.style.color = t.color; apUI.lvl.innerText = 'Lv.' + node.lvl;
     
-    // 攻撃力・射程・速度の計算表示
+    // 永続強化（グローバル強化）を反映させたステータス計算
+    const globalDmgBonus = 1 + (metaState.upgrades.global_dmg || 0) * 0.05;
+    const globalRngBonus = 1 + (metaState.upgrades.global_rng || 0) * 0.03;
+
     let dmgMulti = t.type === 'income' ? 1.5 : (t.type === 'percent' ? 1.1 : 1.25);
-    let currentDmg = (t.dmg * Math.pow(dmgMulti, node.lvl - 1)).toFixed(1);
+    let currentDmg = (t.dmg * Math.pow(dmgMulti, node.lvl - 1) * globalDmgBonus).toFixed(1);
     if(t.type === 'percent') currentDmg = ((t.pct * Math.pow(1.1, node.lvl - 1)) * 100).toFixed(1) + '%';
     
-    els.apDmg.innerText = t.type === 'income' || t.type === 'buff' ? '-' : currentDmg;
-    els.apRng.innerText = t.range === 0 ? '-' : (t.range * Math.pow(1.05, node.lvl - 1)).toFixed(0);
-    els.apRate.innerText = t.rate === 0 ? '-' : (60/Math.max(1, t.rate * Math.pow(0.95, node.lvl - 1))).toFixed(1)+'/s';
-    els.apEff.innerText = t.type === 'buff' ? 'UP' : (t.type === 'chain' ? t.chainCount+node.lvl-1 : '-');
+    apUI.dmg.innerText = (t.type === 'income' || t.type === 'buff' || t.type === 'blackhole') ? '-' : currentDmg;
+    apUI.rng.innerText = t.range === 0 ? '-' : (t.range * Math.pow(1.05, node.lvl - 1) * globalRngBonus).toFixed(0);
+    apUI.rate.innerText = t.rate === 0 ? '-' : (60/Math.max(1, t.rate * Math.pow(0.95, node.lvl - 1))).toFixed(1)+'/s';
+    apUI.eff.innerText = t.type === 'buff' ? 'UP' : (t.type === 'chain' ? t.chainCount+node.lvl-1 : (t.type === 'spread' ? t.count+node.lvl-1 : '-'));
 
-    // ターゲティングUIの表示制御（攻撃しないタワーは非表示）
-    if(['normal', 'splash', 'sniper', 'percent', 'chain'].includes(t.type)) {
-        els.tgtSettings.style.display = 'block';
-        els.tgtOpts.forEach(opt => {
+    // ターゲティングUIの表示制御
+    if(['normal', 'splash', 'homing', 'percent', 'chain', 'spread'].includes(t.type)) {
+        apUI.tgtSettings.style.display = 'block';
+        apUI.tgtOpts.forEach(opt => {
             if(opt.dataset.tgt === (node.targetMode || 'first')) opt.classList.add('active');
             else opt.classList.remove('active');
         });
     } else {
-        els.tgtSettings.style.display = 'none';
+        apUI.tgtSettings.style.display = 'none';
     }
     
     const upgCost = Math.floor(t.cost * Math.pow(1.6, node.lvl));
     const sellValue = Math.floor(t.cost * Math.pow(1.6, node.lvl - 1) * 0.5);
-    els.apCost.innerText = '$' + upgCost; 
-    els.apSell.innerText = '$' + sellValue;
-    els.btnUpg.disabled = state.coins < upgCost;
-    
-    els.ap.style.display = 'block';
+    apUI.cost.innerText = '$' + upgCost; apUI.sell.innerText = '$' + sellValue;
+    apUI.btnUpg.disabled = gameState.coins < upgCost;
+    apUI.panel.style.display = 'block';
 }
 
-function closeActionPanel() { 
-    selectedNode = null; 
-    els.ap.style.display = 'none'; 
-}
-els.btnClose.onclick = closeActionPanel;
+function closeActionPanel() { selectedNode = null; apUI.panel.style.display = 'none'; }
+apUI.btnClose.onclick = closeActionPanel;
 
-// ターゲティング設定の変更処理
-els.tgtOpts.forEach(opt => {
+apUI.tgtOpts.forEach(opt => {
     opt.onclick = () => {
         if(!selectedNode) return;
         selectedNode.targetMode = opt.dataset.tgt;
-        els.tgtOpts.forEach(o => o.classList.remove('active'));
+        apUI.tgtOpts.forEach(o => o.classList.remove('active'));
         opt.classList.add('active');
     };
 });
 
-// アップグレードと売却の処理
-els.btnUpg.onclick = () => {
+apUI.btnUpg.onclick = () => {
     const cost = Math.floor(NODE_TYPES[selectedNode.type].cost * Math.pow(1.6, selectedNode.lvl));
-    if(state.coins >= cost) { 
-        state.coins -= cost; 
-        selectedNode.lvl++; 
-        openActionPanel(selectedNode); 
-        updateUI(); 
+    if(gameState.coins >= cost) { 
+        gameState.coins -= cost; selectedNode.lvl++; 
+        openActionPanel(selectedNode); updateBattleUI(); 
     }
 };
 
-els.btnSell.onclick = () => {
-    state.coins += Math.floor(NODE_TYPES[selectedNode.type].cost * Math.pow(1.6, selectedNode.lvl - 1) * 0.5);
-    state.nodes = state.nodes.filter(n => n !== selectedNode);
-    closeActionPanel(); 
-    updateUI();
+apUI.btnSell.onclick = () => {
+    gameState.coins += Math.floor(NODE_TYPES[selectedNode.type].cost * Math.pow(1.6, selectedNode.lvl - 1) * 0.5);
+    gameState.nodes = gameState.nodes.filter(n => n !== selectedNode);
+    closeActionPanel(); updateBattleUI();
 };
-
-// --- セーブ＆ロード機能 (文字列出力・読込) ---
-els.btnSave.onclick = () => {
-    if(state.waveActive) return alert('ウェーブ中はセーブできません！');
-    // 現在の状態をまとめてJSONにし、Base64で暗号化っぽく変換
-    const saveData = { w: state.wave, c: state.coreHp, m: state.coins, n: state.nodes };
-    const saveString = btoa(JSON.stringify(saveData)); 
-    
-    els.slTitle.innerText = 'SAVE DATA';
-    els.slText.value = saveString;
-    els.slText.readOnly = true;
-    slMode = 'save';
-    els.slModal.style.display = 'block';
-    els.btnConfSL.innerText = 'COPY';
-};
-
-els.btnLoad.onclick = () => {
-    if(state.waveActive) return alert('ウェーブ中はロードできません！');
-    els.slTitle.innerText = 'LOAD DATA';
-    els.slText.value = '';
-    els.slText.readOnly = false;
-    slMode = 'load';
-    els.slModal.style.display = 'block';
-    els.btnConfSL.innerText = 'LOAD';
-};
-
-els.btnConfSL.onclick = () => {
-    if(slMode === 'save') {
-        els.slText.select();
-        document.execCommand('copy');
-        alert('セーブコードをコピーしました！この文字列を保存しておいてください。');
-        els.slModal.style.display = 'none';
-    } else if(slMode === 'load') {
-        try {
-            // Base64をデコードしてJSONをパース
-            const loadData = JSON.parse(atob(els.slText.value));
-            state.wave = loadData.w; state.coreHp = loadData.c; state.coins = loadData.m; state.nodes = loadData.n || [];
-            state.enemies = []; state.bullets = []; state.particles = [];
-            updateUI();
-            alert('ロード成功！配置を復元しました。');
-            els.slModal.style.display = 'none';
-        } catch(e) {
-            alert('エラー: データが破損しているか、無効なコードです。');
-        }
-    }
-};
-els.btnCancSL.onclick = () => els.slModal.style.display = 'none';
 
 // WAVE開始ボタン
-els.btnNext.onclick = () => {
-    if(state.waveActive) return;
-    state.waveActive = true;
-    // 後半になればなるほど敵が大量に押し寄せる計算
-    enemiesToSpawn = 10 + Math.floor(state.wave * 3.5);
+document.getElementById('btnNextWave').onclick = () => {
+    if(gameState.waveActive) return;
+    gameState.waveActive = true;
+    enemiesToSpawn = 10 + Math.floor(gameState.wave * 3.5);
     enemySpawnTimer = 0;
-    els.btnNext.disabled = true; 
-    els.btnNext.innerText = 'WAVE IN PROGRESS...';
+    document.getElementById('btnNextWave').disabled = true; 
+    document.getElementById('btnNextWave').innerText = 'WAVE IN PROGRESS...';
     closeActionPanel();
 };
-    // --- パート4：敵のスポーン処理、タワー配置、メインループの土台 ---
+    // --- 【パート5：メインループ、全タワーロジック、リザルト処理】 ---
 
-// 敵を出現させる関数
+// 敵を出現させる処理
 function spawnEnemy() {
     const angle = Math.random() * Math.PI * 2;
-    // 画面の中心から、画面のフチの少し外側を計算してスポーンさせる
-    const dist = (Math.max(canvas.width, canvas.height) / 2) + 50; 
+    // 画面外からスポーン
+    const dist = Math.max(canvas.width, canvas.height) / 2 + 50;
+    const ex = corePos.x + Math.cos(angle) * dist;
+    const ey = corePos.y + Math.sin(angle) * dist;
     
-    // ウェーブ進行によるHPのインフレ計算（指数関数的にキツくなります）
-    const hp = waveEnemyMaxHpBase * Math.pow(1.35, state.wave - 1);
-    // ウェーブ進行によるスピードの上昇
-    const speed = 0.8 + Math.random() * 0.4 + (state.wave * 0.04);
+    // ウェーブ数に応じてHPと速度が上昇
+    const hp = waveEnemyMaxHpBase * Math.pow(1.2, gameState.wave - 1);
+    const speed = 1.0 + (gameState.wave * 0.05);
     
-    state.enemies.push({ 
-        x: corePos.x + Math.cos(angle)*dist, 
-        y: corePos.y + Math.sin(angle)*dist, 
-        hp: hp, maxHp: hp, speed: speed, 
-        radius: 12, color: '#ff2255', 
-        reward: Math.floor(4 + state.wave * 0.8), // 倒したときの報酬もアップ
-        slow: 1, sTimer: 0, pDmg: 0, pTimer: 0, stunTimer: 0,
-        distToCore: dist // ターゲティング用にコアまでの距離を保持
+    gameState.enemies.push({
+        x: ex, y: ey, hp: hp, maxHp: hp, speed: speed, radius: 10 + Math.random()*5,
+        slowTimer: 0, slowFactor: 1, poisonTimer: 0, stunTimer: 0, pullX: null, pullY: null, pullForce: 0
     });
 }
 
-// キャンバス上のクリック（タワー配置・選択）処理
-canvas.addEventListener('pointerdown', e => {
-    // サイドバーの領域をクリックした場合は無視
-    if(e.clientX < sidebarWidth) return;
-    
-    // クリックした座標をグリッド（マス目）の真ん中にスナップさせる
-    const gx = Math.floor(e.clientX / gridSize) * gridSize + gridSize / 2;
-    const gy = Math.floor(e.clientY / gridSize) * gridSize + gridSize / 2;
-    
-    // コアの位置には建築できないようにする
-    if(gx === corePos.x && gy === corePos.y) return;
+// 距離計算ヘルパー
+function getDist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
-    // クリックしたマスに既にタワーがあるか探す
-    const existingNode = state.nodes.find(n => n.x === gx && n.y === gy);
-    
-    if(selectedBuildType) {
-        // 【新規建築モード】
-        if(!existingNode) {
-            const cost = NODE_TYPES[selectedBuildType].cost;
-            if(state.coins >= cost) {
-                state.coins -= cost;
-                state.nodes.push({ 
-                    x: gx, y: gy, 
-                    type: selectedBuildType, 
-                    lvl: 1, cd: 0,
-                    targetMode: 'first' // デフォルトのターゲット優先度
-                });
-                updateUI();
-                // 配置エフェクト
-                for(let i=0;i<15;i++) {
-                    state.particles.push({
-                        x: gx, y: gy, 
-                        vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, 
-                        life: 1, color: NODE_TYPES[selectedBuildType].color, size: 2
-                    });
-                }
-            }
-        }
-    } else {
-        // 【選択モード】
-        if(existingNode) openActionPanel(existingNode); 
-        else closeActionPanel();
-    }
-});
-
-// --- メイン描画ループの土台 ---
-function loop() {
-    // 毎フレームこの関数を呼び出す
-    requestAnimationFrame(loop);
-    frame++;
-
-    // 背景の描画（わずかに透明度を持たせることで、レーザーなどの残像効果を出す）
-    ctx.fillStyle = 'rgba(2, 2, 5, 0.4)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // グリッド線（マス目）の描画
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.08)'; 
-    ctx.lineWidth = 1;
-    for(let i = sidebarWidth; i < canvas.width; i += gridSize) { 
-        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); 
-    }
-    for(let i = 0; i < canvas.height; i += gridSize) { 
-        ctx.beginPath(); ctx.moveTo(sidebarWidth, i); ctx.lineTo(canvas.width, i); ctx.stroke(); 
-    }
-
-// --- ↓ パート4の loop() 関数の中に入ります ↓ ---
-
-    // --- コアの描画 ---
-    ctx.fillStyle = '#00ffff';
-    ctx.beginPath();
-    ctx.arc(corePos.x, corePos.y, 25, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.font = 'bold 14px Courier New';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(Math.floor(state.coreHp), corePos.x, corePos.y);
-
-    // --- 敵のスポーン管理 ---
-    if(state.waveActive && enemiesToSpawn > 0) {
-        enemySpawnTimer++;
-        // ウェーブが進むにつれて出現間隔が短くなる
-        let spawnRate = Math.max(10, 60 - state.wave * 2);
-        if(enemySpawnTimer > spawnRate) {
-            spawnEnemy();
-            enemiesToSpawn--;
-            enemySpawnTimer = 0;
-        }
-    }
-
-    // --- 敵の処理（移動、描画、状態異常） ---
-    for(let i = state.enemies.length - 1; i >= 0; i--) {
-        let e = state.enemies[i];
-        
-        // 状態異常の処理
-        let currentSpeed = e.speed;
-        if(e.sTimer > 0) { e.sTimer--; currentSpeed *= e.slow; } // 鈍足
-        if(e.pTimer > 0) { 
-            e.pTimer--; 
-            if(frame % 30 === 0) e.hp -= e.pDmg; // 毒ダメージ（0.5秒ごと）
-        }
-        let isStunned = false;
-        if(e.stunTimer > 0) { e.stunTimer--; isStunned = true; currentSpeed = 0; } // スタン
-
-        // 移動処理
-        const dx = corePos.x - e.x;
-        const cy = corePos.y - e.y;
-        e.distToCore = Math.hypot(dx, cy);
-        
-        if(e.distToCore < 25) {
-            // コア到達時のダメージ処理
-            state.coreHp -= e.hp; // 残りHP分がそのままダメージ！
-            state.enemies.splice(i, 1);
-            updateUI();
-            continue;
-        } else if (!isStunned) {
-            // コアに向かって移動
-            e.x += (dx / e.distToCore) * currentSpeed;
-            e.y += (cy / e.distToCore) * currentSpeed;
-        }
-
-        // 死亡判定
-        if(e.hp <= 0) {
-            state.coins += e.reward;
-            // 爆発エフェクト
-            for(let p=0;p<10;p++) {
-                state.particles.push({ x: e.x, y: e.y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, life: 1, color: e.color, size: Math.random()*3+1 });
-            }
-            state.enemies.splice(i, 1);
-            updateUI();
-            continue;
-        }
-
-        // 敵の描画
-        ctx.fillStyle = isStunned ? '#aaaaaa' : (e.pTimer > 0 ? '#00ff00' : (e.sTimer > 0 ? '#00ffff' : e.color));
-        ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2); ctx.fill();
-        // HPバー
-        ctx.fillStyle = '#333'; ctx.fillRect(e.x - 10, e.y - 15, 20, 3);
-        ctx.fillStyle = '#0f0'; ctx.fillRect(e.x - 10, e.y - 15, 20 * (Math.max(0, e.hp) / e.maxHp), 3);
-    }
-
-    // --- バフタワー（OVERCLOCK）の事前計算 ---
-    let buffMap = new Map();
-    state.nodes.forEach(n => {
-        if(NODE_TYPES[n.type].type === 'buff') {
-            const t = NODE_TYPES[n.type];
+// バフ（強化）の計算
+function getTowerBuffs(tower) {
+    let dmgMult = 1, rateMult = 1;
+    gameState.nodes.forEach(n => {
+        if(n.type === 'buffer') {
+            const t = NODE_TYPES.buffer;
             const rng = t.range * Math.pow(1.05, n.lvl - 1);
-            state.nodes.forEach(targetNode => {
-                // 自身以外の射程内のタワーにバフを付与
-                if(n !== targetNode && Math.hypot(n.x - targetNode.x, n.y - targetNode.y) <= rng) {
-                    if(!buffMap.has(targetNode)) buffMap.set(targetNode, { spd: 1, dmg: 1 });
-                    let b = buffMap.get(targetNode);
-                    b.spd *= t.buffRate; // 例: クールダウンを短縮
-                    b.dmg *= t.buffDmg;  // 例: ダメージを増加
-                }
-            });
-            // バフの範囲描画（薄く）
-            ctx.strokeStyle = 'rgba(255, 187, 255, 0.05)';
-            ctx.beginPath(); ctx.arc(n.x, n.y, rng, 0, Math.PI*2); ctx.stroke();
+            if(getDist(tower, n) <= rng) { dmgMult *= t.buffDmg; rateMult *= t.buffRate; }
         }
     });
+    return { dmgMult, rateMult };
+}
 
-    // --- タワー（ノード）の処理 ---
-    state.nodes.forEach(n => {
-        const t = NODE_TYPES[n.type];
-        
-        // 描画
-        ctx.fillStyle = (n === selectedNode) ? '#112244' : '#0a0a1a';
-        ctx.fillRect(n.x - gridSize/2 + 2, n.y - gridSize/2 + 2, gridSize - 4, gridSize - 4);
-        ctx.strokeStyle = t.color;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(n.x - gridSize/2 + 2, n.y - gridSize/2 + 2, gridSize - 4, gridSize - 4);
-        
-        // 選択時は射程円を描画
-        if(n === selectedNode && t.range > 0) {
-            ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, t.range * Math.pow(1.05, n.lvl - 1), 0, Math.PI * 2);
-            ctx.stroke();
-        }
+// メインループ
+function gameLoop() {
+    if(!gameState) return;
+    
+    // 背景とグリッド描画
+    ctx.fillStyle = '#020205'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#0a0a1a'; ctx.lineWidth = 1;
+    for(let x = sidebarWidth; x < canvas.width; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+    for(let y = 0; y < canvas.height; y += gridSize) { ctx.beginPath(); ctx.moveTo(sidebarWidth, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
 
-        // 攻撃・スキル処理
-        if(n.cd > 0) n.cd--;
-        
-        if(t.type === 'income' || t.type === 'buff') return; // 非攻撃タワーはスキップ
+    // コアの描画
+    ctx.fillStyle = '#00ffff'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffff';
+    ctx.beginPath(); ctx.arc(corePos.x, corePos.y, 25, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    const globalDmgBonus = 1 + (metaState.upgrades.global_dmg || 0) * 0.05;
+    const globalRngBonus = 1 + (metaState.upgrades.global_rng || 0) * 0.03;
 
-        const range = t.range * Math.pow(1.05, n.lvl - 1);
-        let dmgMulti = t.type === 'percent' ? 1.1 : 1.25;
-        let damage = t.dmg * Math.pow(dmgMulti, n.lvl - 1);
-        let cdRate = Math.max(1, t.rate * Math.pow(0.95, n.lvl - 1));
-
-        // バフの適用
-        if(buffMap.has(n)) {
-            const b = buffMap.get(n);
-            damage *= b.dmg;
-            cdRate *= b.spd;
-        }
-
-        // 射程内の敵をリストアップ
-        let inRange = state.enemies.filter(e => Math.hypot(e.x - n.x, e.y - n.y) <= range);
-        if(inRange.length === 0) return;
-
-        // ターゲティングソート
-        const mode = n.targetMode || 'first';
-        if(mode === 'first') inRange.sort((a, b) => a.distToCore - b.distToCore);
-        else if(mode === 'close') inRange.sort((a, b) => Math.hypot(a.x-n.x, a.y-n.y) - Math.hypot(b.x-n.x, b.y-n.y));
-        else if(mode === 'strong') inRange.sort((a, b) => b.hp - a.hp);
-        else if(mode === 'weak') inRange.sort((a, b) => a.hp - b.hp);
-
-        const target = inRange[0];
-
-        if(n.cd <= 0) {
-            n.cd = cdRate;
+    // --- ウェーブ進行と敵スポーン ---
+    if(gameState.waveActive) {
+        if(enemiesToSpawn > 0) {
+            enemySpawnTimer--;
+            if(enemySpawnTimer <= 0) {
+                spawnEnemy(); enemiesToSpawn--;
+                enemySpawnTimer = Math.max(10, 60 - gameState.wave * 2);
+            }
+        } else if(gameState.enemies.length === 0) {
+            // ウェーブクリア処理
+            gameState.waveActive = false;
+            gameState.wave++;
             
-            // 攻撃タイプ別の処理
-            if(t.type === 'beam') {
-                target.hp -= damage;
-                ctx.strokeStyle = t.color; ctx.lineWidth = 3;
-                ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(target.x, target.y); ctx.stroke();
-            } else if(t.type === 'chain') {
-                let chains = t.chainCount + n.lvl - 1;
-                let currTarget = target;
-                let hitEnemies = new Set([currTarget]);
-                currTarget.hp -= damage;
-                ctx.strokeStyle = t.color; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(currTarget.x, currTarget.y); ctx.stroke();
-                
-                for(let c=0; c<chains-1; c++) {
-                    let nextTargets = state.enemies.filter(e => !hitEnemies.has(e) && Math.hypot(e.x - currTarget.x, e.y - currTarget.y) < 120);
-                    if(nextTargets.length === 0) break;
-                    let next = nextTargets.sort((a,b) => Math.hypot(a.x-currTarget.x, a.y-currTarget.y) - Math.hypot(b.x-currTarget.x, b.y-currTarget.y))[0];
-                    next.hp -= damage * 0.8; // 連鎖するごとにダメージ減衰
-                    ctx.beginPath(); ctx.moveTo(currTarget.x, currTarget.y); ctx.lineTo(next.x, next.y); ctx.stroke();
-                    hitEnemies.add(next);
-                    currTarget = next;
+            // マイナータワー（資金調達）の処理
+            gameState.nodes.forEach(n => {
+                if(n.type === 'miner') {
+                    const income = Math.floor(NODE_TYPES.miner.value * Math.pow(1.5, n.lvl - 1));
+                    gameState.coins += income;
+                    // エフェクト
+                    for(let i=0;i<15;i++) gameState.particles.push({x:n.x, y:n.y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4, life:1, color:'#ffaa00', size:3});
                 }
-            } else if(t.type === 'stun') {
-                inRange.forEach(e => {
-                    e.hp -= damage;
-                    e.stunTimer = t.time * Math.pow(1.1, n.lvl - 1);
+            });
+            
+            updateBattleUI();
+            document.getElementById('btnNextWave').disabled = false;
+            document.getElementById('btnNextWave').innerText = 'START WAVE ' + gameState.wave;
+        }
+    }
+
+    // --- タワーの処理 ---
+    gameState.nodes.forEach(node => {
+        const t = NODE_TYPES[node.type];
+        // 描画
+        ctx.fillStyle = t.color;
+        ctx.fillRect(node.x - 15, node.y - 15, 30, 30);
+        ctx.fillStyle = '#000'; ctx.font = '10px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('L'+node.lvl, node.x, node.y);
+
+        if(selectedNode === node) {
+            ctx.strokeStyle = t.color; ctx.lineWidth = 1; ctx.beginPath();
+            const rng = t.range * Math.pow(1.05, node.lvl - 1) * globalRngBonus;
+            ctx.arc(node.x, node.y, rng, 0, Math.PI*2); ctx.stroke();
+        }
+
+        if(t.type === 'income' || t.type === 'buff') return; // 攻撃しないタワー
+
+        node.cd--;
+        if(node.cd <= 0 && gameState.enemies.length > 0) {
+            const buffs = getTowerBuffs(node);
+            const range = t.range * Math.pow(1.05, node.lvl - 1) * globalRngBonus;
+            const dmgMult = (t.type === 'percent') ? 1.1 : 1.25;
+            const damage = (t.dmg * Math.pow(dmgMult, node.lvl - 1) * globalDmgBonus * buffs.dmgMult);
+            
+            // ターゲット選定
+            let targets = gameState.enemies.filter(e => getDist(node, e) <= range);
+            if(targets.length > 0) {
+                targets.sort((a, b) => {
+                    if(node.targetMode === 'close') return getDist(node, a) - getDist(node, b);
+                    if(node.targetMode === 'strong') return b.hp - a.hp;
+                    if(node.targetMode === 'weak') return a.hp - b.hp;
+                    return getDist(a, corePos) - getDist(b, corePos); // default: first
                 });
-                ctx.fillStyle = 'rgba(170, 170, 170, 0.3)';
-                ctx.beginPath(); ctx.arc(n.x, n.y, range, 0, Math.PI*2); ctx.fill();
-            } else {
-                // 通常弾・爆発弾・割合ダメ・妨害などは弾（オブジェクト）を飛ばす
-                state.bullets.push({
-                    x: n.x, y: n.y, tx: target.x, ty: target.y, target: target,
-                    speed: 12, damage: damage, type: t.type, color: t.color,
-                    radius: t.radius ? t.radius * Math.pow(1.02, n.lvl -1) : 0, 
-                    factor: t.factor || 0, time: t.time || 0, 
-                    dot: t.dot ? t.dot * Math.pow(1.2, n.lvl - 1) : 0, dotTime: t.dotTime || 0,
-                    pct: t.pct ? t.pct * Math.pow(1.1, n.lvl - 1) : 0
-                });
+                
+                let target = targets[0];
+                let angle = Math.atan2(target.y - node.y, target.x - node.x);
+
+                // 発射処理（種類別）
+                if(t.type === 'laser') {
+                    target.hp -= damage;
+                    ctx.strokeStyle = t.color; ctx.lineWidth = 2 + node.lvl;
+                    ctx.beginPath(); ctx.moveTo(node.x, node.y); ctx.lineTo(target.x, target.y); ctx.stroke();
+                } else if(t.type === 'emp' || t.type === 'blackhole') {
+                    // EMPとブラックホールは範囲内の敵全てに効果
+                    targets.forEach(e => {
+                        if(t.type === 'emp') { e.stunTimer = t.time * node.lvl; e.hp -= damage; }
+                        if(t.type === 'blackhole') { e.pullX = node.x; e.pullY = node.y; e.pullForce = t.pullForce + (node.lvl*0.5); }
+                    });
+                    // エフェクト
+                    ctx.strokeStyle = t.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(node.x, node.y, range, 0, Math.PI*2); ctx.stroke();
+                } else if(t.type === 'chain') {
+                    let currentTarget = target;
+                    let hitEnemies = new Set([currentTarget]);
+                    currentTarget.hp -= damage;
+                    let lastX = node.x, lastY = node.y;
+                    let chains = t.chainCount + node.lvl - 1;
+                    
+                    ctx.strokeStyle = t.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(lastX, lastY);
+                    
+                    for(let i=0; i<chains; i++) {
+                        ctx.lineTo(currentTarget.x, currentTarget.y);
+                        // 次のターゲットを探す
+                        let nextTargets = gameState.enemies.filter(e => !hitEnemies.has(e) && getDist(currentTarget, e) <= 100);
+                        if(nextTargets.length > 0) {
+                            nextTargets.sort((a,b) => getDist(currentTarget, a) - getDist(currentTarget, b));
+                            currentTarget = nextTargets[0];
+                            hitEnemies.add(currentTarget);
+                            currentTarget.hp -= damage * 0.8; // 連鎖ごとに威力減衰
+                        } else break;
+                    }
+                    ctx.stroke();
+                } else if(t.type === 'spread') {
+                    const count = t.count + node.lvl - 1;
+                    for(let i=0; i<count; i++) {
+                        let offsetAngle = angle + (i - count/2) * t.spread;
+                        gameState.bullets.push({x:node.x, y:node.y, vx:Math.cos(offsetAngle)*8, vy:Math.sin(offsetAngle)*8, dmg:damage, type:t.type, color:t.color, tData:t, lvl:node.lvl });
+                    }
+                } else {
+                    // 通常弾、鈍足、毒、爆発、割合、ミサイル
+                    gameState.bullets.push({x:node.x, y:node.y, vx:Math.cos(angle)*8, vy:Math.sin(angle)*8, dmg:damage, type:t.type, color:t.color, target:target, tData:t, lvl:node.lvl });
+                }
+                
+                node.cd = Math.max(1, (60 / t.rate) * buffs.rateMult * Math.pow(0.95, node.lvl - 1));
             }
         }
     });
 
     // --- 弾の処理 ---
-    for(let i = state.bullets.length - 1; i >= 0; i--) {
-        let b = state.bullets[i];
+    for(let i = gameState.bullets.length - 1; i >= 0; i--) {
+        let b = gameState.bullets[i];
         
-        // ターゲットを追尾
-        if(b.target && state.enemies.includes(b.target)) {
-            b.tx = b.target.x; b.ty = b.target.y;
+        // ミサイルの誘導処理
+        if(b.type === 'homing' && b.target && b.target.hp > 0) {
+            let angle = Math.atan2(b.target.y - b.y, b.target.x - b.x);
+            b.vx = Math.cos(angle)*6; b.vy = Math.sin(angle)*6;
         }
+        
+        b.x += b.vx; b.y += b.vy;
+        
+        ctx.fillStyle = b.color;
+        ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
 
-        const dx = b.tx - b.x;
-        const dy = b.ty - b.y;
-        const dist = Math.hypot(dx, dy);
+        // 画面外削除
+        if(b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) { gameState.bullets.splice(i, 1); continue; }
 
-        if(dist < b.speed) {
-            // 命中時処理
-            if(b.type === 'splash') {
-                state.enemies.forEach(e => {
-                    if(Math.hypot(e.x - b.x, e.y - b.y) <= b.radius) e.hp -= b.damage;
-                });
-                // 爆発エフェクト描画
-                ctx.fillStyle = 'rgba(255, 85, 0, 0.5)';
-                ctx.beginPath(); ctx.arc(b.tx, b.ty, b.radius, 0, Math.PI*2); ctx.fill();
-            } else if (b.target && state.enemies.includes(b.target)) {
-                if(b.type === 'percent') {
-                    b.target.hp -= (b.target.maxHp * b.pct) + b.damage;
+        // 当たり判定
+        for(let j = 0; j < gameState.enemies.length; j++) {
+            let e = gameState.enemies[j];
+            if(getDist(b, e) < e.radius + 4) {
+                // 着弾処理
+                if(b.type === 'splash') {
+                    const radius = b.tData.radius + b.lvl * 5;
+                    gameState.enemies.forEach(ae => { if(getDist(b, ae) <= radius) ae.hp -= b.dmg; });
+                    // 爆発エフェクト
+                    ctx.fillStyle = 'rgba(255,85,0,0.5)'; ctx.beginPath(); ctx.arc(b.x, b.y, radius, 0, Math.PI*2); ctx.fill();
                 } else {
-                    b.target.hp -= b.damage;
+                    if(b.type === 'percent') e.hp -= e.maxHp * (b.tData.pct * Math.pow(1.1, b.lvl - 1));
+                    else e.hp -= b.dmg;
+                    
+                    if(b.type === 'slow') { e.slowTimer = b.tData.time; e.slowFactor = Math.max(0.1, b.tData.factor - (b.lvl*0.02)); }
+                    if(b.type === 'poison') { e.poisonTimer = b.tData.dotTime; e.poisonDmg = b.tData.dot * b.lvl; }
                 }
                 
-                // 状態異常付与
-                if(b.type === 'slow') { b.target.slow = b.factor; b.target.sTimer = b.time; }
-                if(b.type === 'poison') { b.target.pDmg = b.dot; b.target.pTimer = b.dotTime; }
+                for(let k=0;k<5;k++) gameState.particles.push({x:b.x, y:b.y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4, life:1, color:b.color, size:2});
+                gameState.bullets.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    // --- 敵の処理 ---
+    for(let i = gameState.enemies.length - 1; i >= 0; i--) {
+        let e = gameState.enemies[i];
+        
+        // 状態異常処理
+        if(e.stunTimer > 0) { e.stunTimer--; }
+        else {
+            let currentSpeed = e.speed;
+            if(e.slowTimer > 0) { e.slowTimer--; currentSpeed *= e.slowFactor; }
+            
+            // ブラックホールの吸引力
+            if(e.pullX !== null && e.pullY !== null) {
+                let pa = Math.atan2(e.pullY - e.y, e.pullX - e.x);
+                e.x += Math.cos(pa) * e.pullForce;
+                e.y += Math.sin(pa) * e.pullForce;
+                e.pullForce *= 0.9; // 徐々に減衰
+                if(e.pullForce < 0.1) { e.pullX = null; e.pullY = null; }
+            } else {
+                // コアへ向かって移動
+                let angle = Math.atan2(corePos.y - e.y, corePos.x - e.x);
+                e.x += Math.cos(angle) * currentSpeed;
+                e.y += Math.sin(angle) * currentSpeed;
+            }
+        }
+
+        if(e.poisonTimer > 0) {
+            e.poisonTimer--;
+            if(e.poisonTimer % 30 === 0) e.hp -= e.poisonDmg; // 0.5秒ごとにダメージ
+        }
+
+        // コア到達
+        if(getDist(e, corePos) < 25 + e.radius) {
+            gameState.coreHp -= e.hp;
+            updateBattleUI();
+            for(let k=0;k<10;k++) gameState.particles.push({x:corePos.x, y:corePos.y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, life:1, color:'#ff0000', size:4});
+            gameState.enemies.splice(i, 1);
+            if(gameState.coreHp <= 0) { gameOver(); return; }
+            continue;
+        }
+
+        // 死亡
+        if(e.hp <= 0) {
+            gameState.coins += 10 + gameState.wave;
+            // クリスタル獲得（メタ強化で増加）
+            const crystalDropChance = 0.2; // 20%の確率でドロップ
+            if(Math.random() < crystalDropChance) {
+                const crystalBonus = 1 + (metaState.upgrades.crystal_gain || 0) * 0.1;
+                gameState.earnedCrystalsThisRun += Math.ceil(1 * crystalBonus);
             }
             
-            // 弾消滅エフェクト
-            for(let p=0;p<5;p++) {
-                state.particles.push({ x: b.x, y: b.y, vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3, life: 1, color: b.color, size: 2 });
-            }
-            state.bullets.splice(i, 1);
+            for(let k=0;k<8;k++) gameState.particles.push({x:e.x, y:e.y, vx:(Math.random()-0.5)*5, vy:(Math.random()-0.5)*5, life:1, color:'#fff', size:3});
+            gameState.enemies.splice(i, 1);
+            updateBattleUI();
         } else {
-            // 弾の移動と描画
-            b.x += (dx / dist) * b.speed;
-            b.y += (dy / dist) * b.speed;
-            ctx.fillStyle = b.color;
-            ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
+            // 描画
+            ctx.fillStyle = e.stunTimer > 0 ? '#aaaaaa' : (e.poisonTimer > 0 ? '#00ff00' : (e.slowTimer > 0 ? '#00ffff' : '#ff3366'));
+            ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2); ctx.fill();
+            // HPバー
+            ctx.fillStyle = '#f00'; ctx.fillRect(e.x - 10, e.y - 15, 20, 3);
+            ctx.fillStyle = '#0f0'; ctx.fillRect(e.x - 10, e.y - 15, 20 * (e.hp/e.maxHp), 3);
         }
     }
 
     // --- パーティクルの処理 ---
-    for(let i = state.particles.length - 1; i >= 0; i--) {
-        let p = state.particles[i];
+    for(let i = gameState.particles.length - 1; i >= 0; i--) {
+        let p = gameState.particles[i];
         p.x += p.vx; p.y += p.vy; p.life -= 0.05;
-        if(p.life <= 0) { state.particles.splice(i, 1); continue; }
+        if(p.life <= 0) { gameState.particles.splice(i, 1); continue; }
+        ctx.globalAlpha = Math.max(0, p.life);
         ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.life;
-        ctx.fillRect(p.x, p.y, p.size, p.size);
-        ctx.globalAlpha = 1.0;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
     }
 
-    // --- ウェーブ終了判定 ---
-    if(state.waveActive && enemiesToSpawn <= 0 && state.enemies.length === 0) {
-        state.waveActive = false;
-        state.wave++;
-        
-        // MINER（資金調達タワー）の報酬付与
-        let minerBonus = 0;
-        state.nodes.forEach(n => {
-            if(NODE_TYPES[n.type].type === 'income') {
-minerBonus += Math.floor(NODE_TYPES[n.type].value * Math.pow(1.5, n.lvl - 1));
-            }
-        });
-        if(minerBonus > 0) {
-            state.coins += minerBonus;
-        }
-        
-        els.btnNext.disabled = false;
-        els.btnNext.innerText = 'START WAVE ' + state.wave;
-        updateUI();
-    }
-} // <--- loop関数の閉じカッコ
+    frame++;
+    if(window.loopActive) requestAnimationFrame(gameLoop);
+}
 
-// 全ての準備が整ったら、ゲームループを開始！
-loop();
+// ゲームオーバー処理
+function gameOver() {
+    window.loopActive = false;
+    
+    // リザルト画面に情報をセット
+    document.getElementById('resWave').innerText = gameState.wave;
+    // 仮の撃破数計算（おおよそ）
+    document.getElementById('resKills').innerText = Math.floor(gameState.earnedCrystalsThisRun * 5 + gameState.wave * 10);
+    document.getElementById('resCrystals').innerText = gameState.earnedCrystalsThisRun;
+    
+    // クリスタルをアカウントデータに追加して保存
+    metaState.crystals += gameState.earnedCrystalsThisRun;
+    saveToLocal();
+
+    // 画面切り替え
+    UI.battle.style.display = 'none';
+    UI.result.style.display = 'flex';
+}
 </script>
 </body>
 </html>

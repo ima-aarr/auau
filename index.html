@@ -606,20 +606,33 @@ document.getElementById('btnNextWave').onclick = () => {
     document.getElementById('btnNextWave').innerText = 'WAVE IN PROGRESS...';
     closeActionPanel();
 };
-// --- 【パート5改：敵ギミック超追加バージョン】 ---
+// --- 【パート5改3：BLASTER絶対許さない最終形態バージョン】 ---
 
-// 👿 新規追加：凶悪な敵のギミック一覧
+// 👿 全17種類の凶悪な敵ギミック（後半はBLASTER絶対殺すマン）
 const ENEMY_TYPES = {
     basic:  { color: '#ff3366', speedMult: 1.0, hpMult: 1.0, radius: 10, desc: '標準的な敵' },
-    runner: { color: '#ffff00', speedMult: 2.2, hpMult: 0.4, radius:  8, desc: '超高速移動。CRYO(鈍足)が有効' },
-    tank:   { color: '#aaaaaa', speedMult: 0.6, hpMult: 2.5, radius: 14, armor: 12, desc: '被ダメを固定値で12カット。RAILGUN等の一撃が重い砲台が有効' },
-    swarm:  { color: '#ff88ff', speedMult: 1.2, hpMult: 0.2, radius:  6, count: 5, desc: '5体同時に出現。MORTARやSHOTGUNの範囲攻撃の的' },
-    regen:  { color: '#00ff88', speedMult: 0.9, hpMult: 1.5, radius: 12, regen: 0.05, desc: '毎秒最大HPの5%を自動回復。TOXIN(毒)やPLASMAで対処' },
-    shield: { color: '#0088ff', speedMult: 1.0, hpMult: 0.8, radius: 12, shieldHits: 15, desc: 'どんな大ダメージも1回として防ぐバリアを15枚持つ。VULCANが天敵' },
-    boss:   { color: '#ff0000', speedMult: 0.5, hpMult: 12.0,radius: 25, boss: true, desc: '5WAVE毎に出現するボス。状態異常耐性あり' }
+    runner: { color: '#ffff00', speedMult: 2.2, hpMult: 0.4, radius:  8, desc: '超高速移動' },
+    tank:   { color: '#aaaaaa', speedMult: 0.6, hpMult: 2.5, radius: 14, armor: 12, desc: '被ダメ12カット' },
+    swarm:  { color: '#ff88ff', speedMult: 1.2, hpMult: 0.2, radius:  6, count: 5, desc: '5体同時出現' },
+    regen:  { color: '#00ff88', speedMult: 0.9, hpMult: 1.5, radius: 12, regen: 0.05, desc: '毎秒5%回復' },
+    shield: { color: '#0088ff', speedMult: 1.0, hpMult: 0.8, radius: 12, shieldHits: 15, desc: 'ダメージ15回無効バリア' },
+    ghost:  { color: '#ffffff', speedMult: 1.1, hpMult: 0.8, radius: 10, dodge: 0.6, desc: '通常弾を60%で回避' },
+    stealth:{ color: '#444455', speedMult: 0.9, hpMult: 1.2, radius:  9, stealth: 70, desc: '半径70以内に近づくまで狙われない' },
+    slime:  { color: '#55ff55', speedMult: 0.8, hpMult: 1.5, radius: 16, splits: 2, desc: '分裂する' },
+    shifter:{ color: '#ff00ff', speedMult: 1.0, hpMult: 1.8, radius: 12, shiftThresh: 0.15, desc: 'ダメージで前方へワープ' },
+    jammer: { color: '#ffaa00', speedMult: 0.7, hpMult: 3.0, radius: 14, jamRange: 80, desc: '周囲のタワーの攻撃速度低下' },
+
+    // 💀 追加：BLASTERの存在意義を消し飛ばす極悪ギミック
+    golem:    { color: '#885522', speedMult: 0.6, hpMult: 2.0, radius: 18, minDmg: 40, desc: '【閾値装甲】40ダメージ未満の攻撃を完全に無効化（RAILGUN必須）' },
+    adaptive: { color: '#00ffff', speedMult: 0.9, hpMult: 1.5, radius: 12, adaptive: true, desc: '【適応装甲】攻撃を受ける度に装甲が+1される（手数の多い武器で詰む）' },
+    absorber: { color: '#ff00aa', speedMult: 0.8, hpMult: 2.5, radius: 14, absorb: true, desc: '【弾丸吸収】物理ダメージを受けるとHPが回復する（LASER等のエネルギー・魔法系必須）' },
+    magnet:   { color: '#222222', speedMult: 0.5, hpMult: 5.0, radius: 20, magnetRange: 120, desc: '【重力場】周囲120マスのすべての弾の軌道を自分に曲げる超高耐久の避雷針' },
+    hacker:   { color: '#ffffaa', speedMult: 1.0, hpMult: 1.2, radius: 10, hacker: true, desc: '【反撃EMP】自分に攻撃を当てたタワーのクールダウンを強制的にリセットして黙らせる' },
+
+    boss:   { color: '#ff0000', speedMult: 0.5, hpMult: 15.0,radius: 25, boss: true, desc: 'ボス。状態異常耐性あり' }
 };
 
-// 敵を出現させる処理（ウェーブ進行度に応じて凶悪な敵が解禁）
+// 敵を出現させる処理
 function spawnEnemy(forceType = null, offsetX = 0, offsetY = 0) {
     const angle = Math.random() * Math.PI * 2;
     const dist = Math.max(canvas.width, canvas.height) / 2 + 50;
@@ -629,65 +642,96 @@ function spawnEnemy(forceType = null, offsetX = 0, offsetY = 0) {
     const hpBase = waveEnemyMaxHpBase * Math.pow(1.2, gameState.wave - 1);
     const speedBase = 1.0 + (gameState.wave * 0.05);
     
-    // 出現テーブルの構築
-    let types = ['basic', 'basic']; // basicの確率を少し高く
+    // ウェーブ進行による解禁（地獄のパレード）
+    let types = ['basic', 'basic'];
     if(gameState.wave >= 2) types.push('runner');
     if(gameState.wave >= 3) types.push('tank');
     if(gameState.wave >= 4) types.push('swarm');
     if(gameState.wave >= 5) types.push('regen');
     if(gameState.wave >= 6) types.push('shield');
+    if(gameState.wave >= 7) types.push('ghost');
+    if(gameState.wave >= 8) types.push('stealth');
+    if(gameState.wave >= 9) types.push('slime');
+    if(gameState.wave >= 11) types.push('shifter');
+    if(gameState.wave >= 12) types.push('jammer');
+    if(gameState.wave >= 13) types.push('golem');
+    if(gameState.wave >= 14) types.push('adaptive');
+    if(gameState.wave >= 15) types.push('absorber');
+    if(gameState.wave >= 16) types.push('magnet');
+    if(gameState.wave >= 17) types.push('hacker');
 
     let typeKey = forceType;
-    
-    // 5ウェーブごとに最後の1体をボスにする
     if(!forceType && gameState.wave % 5 === 0 && enemiesToSpawn === 1) typeKey = 'boss';
     else if(!forceType) typeKey = types[Math.floor(Math.random() * types.length)];
 
-    // SWARM（群れ）の場合は特別処理で複数体スポーン
     if(typeKey === 'swarm' && !forceType) {
-        for(let i=0; i<ENEMY_TYPES.swarm.count; i++) {
-            spawnEnemy('swarm_child', (Math.random()-0.5)*40, (Math.random()-0.5)*40);
-        }
+        for(let i=0; i<ENEMY_TYPES.swarm.count; i++) spawnEnemy('swarm_child', (Math.random()-0.5)*40, (Math.random()-0.5)*40);
         return;
     }
 
-    let actualType = typeKey === 'swarm_child' ? ENEMY_TYPES.swarm : ENEMY_TYPES[typeKey];
-    const hp = hpBase * actualType.hpMult;
+    let actualType = typeKey === 'swarm_child' ? ENEMY_TYPES.swarm : (typeKey === 'slime_child' ? { color:'#55ff55', speedMult: 1.2, hpMult: 0.3, radius: 8 } : ENEMY_TYPES[typeKey]);
+    const hp = hpBase * (actualType.hpMult || 1.0);
 
     gameState.enemies.push({
-        x: ex, y: ey, hp: hp, maxHp: hp, speed: speedBase * actualType.speedMult, radius: actualType.radius,
-        eType: typeKey === 'swarm_child' ? 'swarm' : typeKey,
-        color: actualType.color,
-        armor: actualType.armor || 0,
-        shieldHits: actualType.shieldHits || 0,
-        regen: actualType.regen || 0,
-        boss: actualType.boss || false,
+        x: ex, y: ey, hp: hp, maxHp: hp, speed: speedBase * (actualType.speedMult || 1.0), radius: actualType.radius || 10,
+        eType: typeKey === 'swarm_child' ? 'swarm' : (typeKey === 'slime_child' ? 'slime_child' : typeKey),
+        color: actualType.color, armor: actualType.armor || 0, shieldHits: actualType.shieldHits || 0,
+        regen: actualType.regen || 0, dodge: actualType.dodge || 0, stealth: actualType.stealth || 0,
+        splits: actualType.splits || 0, shiftThresh: actualType.shiftThresh || 0, jamRange: actualType.jamRange || 0,
+        minDmg: actualType.minDmg || 0, adaptive: actualType.adaptive || false, absorb: actualType.absorb || false, 
+        magnetRange: actualType.magnetRange || 0, hacker: actualType.hacker || false,
+        boss: actualType.boss || false, dmgAccumulated: 0,
         slowTimer: 0, slowFactor: 1, poisonTimer: 0, stunTimer: 0, pullX: null, pullY: null, pullForce: 0
     });
 }
 
-// 🛡️ 新規追加：ダメージ計算処理（装甲やバリアの処理を一括化）
-function applyDamage(e, dmg, type) {
-    // 1. 回数バリアの判定（毒と割合ダメージ以外はバリアで防がれる）
+// ダメージ計算処理
+function applyDamage(e, dmg, type, sourceNode = null) {
     if(e.shieldHits > 0 && type !== 'poison' && type !== 'percent') {
         e.shieldHits--;
         for(let k=0;k<3;k++) gameState.particles.push({x:e.x, y:e.y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4, life:1, color:'#0088ff', size:2});
-        return; // ダメージ無効化
+        return;
+    }
+
+    // 🛡️ GOLEM: 一定ダメージ未満を無効化
+    if(e.minDmg > 0 && dmg < e.minDmg && type !== 'poison' && type !== 'percent') {
+        // ノーダメージエフェクト
+        for(let k=0;k<2;k++) gameState.particles.push({x:e.x, y:e.y, vx:(Math.random()-0.5)*2, vy:(Math.random()-0.5)*2, life:1, color:'#555', size:1});
+        return; 
+    }
+
+    // ♻️ ADAPTIVE: ダメージを受ける度に装甲が永久に+1
+    if(e.adaptive && type !== 'poison' && type !== 'percent') {
+        e.armor = (e.armor || 0) + 1;
+        // 装甲アップエフェクト
+        gameState.particles.push({x:e.x, y:e.y, vx:0, vy:-2, life:1, color:'#00ffff', size:2});
+    }
+
+    // ⚡ HACKER: 攻撃してきたタワーのクールダウンを強制的に30増やす（反撃ジャミング）
+    if(e.hacker && sourceNode) {
+        sourceNode.cd += 30; // 約0.5秒スタン
+        ctx.strokeStyle = '#ffffaa'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(sourceNode.x, sourceNode.y); ctx.stroke();
     }
     
     let actualDmg = dmg;
-    // 2. 装甲の判定（毒と割合ダメージは装甲を貫通する）
-    if(e.armor > 0 && type !== 'poison' && type !== 'percent') {
-        actualDmg = Math.max(1, actualDmg - e.armor); // 装甲値分ダメージを引く（最低1ダメージ）
-    }
-    
+    if(e.armor > 0 && type !== 'poison' && type !== 'percent') actualDmg = Math.max(1, actualDmg - e.armor);
     e.hp -= actualDmg;
+
+    // SHIFTER (ワープ)
+    if(e.shiftThresh && e.hp > 0) {
+        e.dmgAccumulated += actualDmg;
+        const thresh = e.maxHp * e.shiftThresh;
+        while(e.dmgAccumulated >= thresh) {
+            e.dmgAccumulated -= thresh;
+            let a = Math.atan2(corePos.y - e.y, corePos.x - e.x);
+            e.x += Math.cos(a) * 35; e.y += Math.sin(a) * 35;
+            for(let k=0;k<8;k++) gameState.particles.push({x:e.x, y:e.y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, life:1, color:'#ff00ff', size:3});
+        }
+    }
 }
 
-// 距離計算ヘルパー
 function getDist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
-// バフ（強化）の計算
 function getTowerBuffs(tower) {
     let dmgMult = 1, rateMult = 1;
     gameState.nodes.forEach(n => {
@@ -700,17 +744,14 @@ function getTowerBuffs(tower) {
     return { dmgMult, rateMult };
 }
 
-// メインループ
 function gameLoop() {
     if(!gameState) return;
     
-    // 背景とグリッド描画
     ctx.fillStyle = '#020205'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = '#0a0a1a'; ctx.lineWidth = 1;
     for(let x = sidebarWidth; x < canvas.width; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
     for(let y = 0; y < canvas.height; y += gridSize) { ctx.beginPath(); ctx.moveTo(sidebarWidth, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
 
-    // コアの描画
     ctx.fillStyle = '#00ffff'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffff';
     ctx.beginPath(); ctx.arc(corePos.x, corePos.y, 25, 0, Math.PI*2); ctx.fill();
     ctx.shadowBlur = 0;
@@ -718,7 +759,6 @@ function gameLoop() {
     const globalDmgBonus = 1 + (metaState.upgrades.global_dmg || 0) * 0.05;
     const globalRngBonus = 1 + (metaState.upgrades.global_rng || 0) * 0.03;
 
-    // --- ウェーブ進行と敵スポーン ---
     if(gameState.waveActive) {
         if(enemiesToSpawn > 0) {
             enemySpawnTimer--;
@@ -727,12 +767,10 @@ function gameLoop() {
                 enemySpawnTimer = Math.max(10, 60 - gameState.wave * 2);
             }
         } else if(gameState.enemies.length === 0) {
-            gameState.waveActive = false;
-            gameState.wave++;
+            gameState.waveActive = false; gameState.wave++;
             gameState.nodes.forEach(n => {
                 if(n.type === 'miner') {
-                    const income = Math.floor(NODE_TYPES.miner.value * Math.pow(1.5, n.lvl - 1));
-                    gameState.coins += income;
+                    gameState.coins += Math.floor(NODE_TYPES.miner.value * Math.pow(1.5, n.lvl - 1));
                     for(let i=0;i<15;i++) gameState.particles.push({x:n.x, y:n.y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4, life:1, color:'#ffaa00', size:3});
                 }
             });
@@ -742,30 +780,48 @@ function gameLoop() {
         }
     }
 
-    // --- タワーの処理 ---
+    let jammerFields = gameState.enemies.filter(e => e.jamRange > 0);
+    // 🧲 マグネット敵（弾の軌道を曲げる用）を取得
+    let magnets = gameState.enemies.filter(e => e.magnetRange > 0);
+
     gameState.nodes.forEach(node => {
         const t = NODE_TYPES[node.type];
-        ctx.fillStyle = t.color;
-        ctx.fillRect(node.x - 15, node.y - 15, 30, 30);
+        
+        // ハッキング（反撃EMP）を受けている間はノイズを描画
+        if(node.cd > 60) {
+            ctx.fillStyle = Math.random() > 0.5 ? '#ffff00' : '#ff0000';
+            ctx.fillRect(node.x - 15 + (Math.random()-0.5)*4, node.y - 15 + (Math.random()-0.5)*4, 30, 30);
+        } else {
+            ctx.fillStyle = t.color;
+            ctx.fillRect(node.x - 15, node.y - 15, 30, 30);
+        }
+        
         ctx.fillStyle = '#000'; ctx.font = '10px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
         ctx.fillText('L'+node.lvl, node.x, node.y);
 
         if(selectedNode === node) {
             ctx.strokeStyle = t.color; ctx.lineWidth = 1; ctx.beginPath();
-            const rng = t.range * Math.pow(1.05, node.lvl - 1) * globalRngBonus;
-            ctx.arc(node.x, node.y, rng, 0, Math.PI*2); ctx.stroke();
+            ctx.arc(node.x, node.y, t.range * Math.pow(1.05, node.lvl - 1) * globalRngBonus, 0, Math.PI*2); ctx.stroke();
         }
 
         if(t.type === 'income' || t.type === 'buff') return;
 
-        node.cd--;
+        let isJammed = jammerFields.some(j => getDist(node, j) <= j.jamRange);
+        if(isJammed) {
+            ctx.strokeStyle = '#ffaa00'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(node.x, node.y, 20, 0, Math.PI*2); ctx.stroke();
+            if(frame % 3 === 0) node.cd--; 
+        } else {
+            node.cd--;
+        }
+
         if(node.cd <= 0 && gameState.enemies.length > 0) {
             const buffs = getTowerBuffs(node);
             const range = t.range * Math.pow(1.05, node.lvl - 1) * globalRngBonus;
             const dmgMult = (t.type === 'percent') ? 1.1 : 1.25;
             const damage = (t.dmg * Math.pow(dmgMult, node.lvl - 1) * globalDmgBonus * buffs.dmgMult);
             
-            let targets = gameState.enemies.filter(e => getDist(node, e) <= range);
+            let targets = gameState.enemies.filter(e => getDist(node, e) <= range && (!e.stealth || getDist(node, e) <= e.stealth));
+            
             if(targets.length > 0) {
                 targets.sort((a, b) => {
                     if(node.targetMode === 'close') return getDist(node, a) - getDist(node, b);
@@ -778,29 +834,22 @@ function gameLoop() {
                 let angle = Math.atan2(target.y - node.y, target.x - node.x);
 
                 if(t.type === 'laser') {
-                    applyDamage(target, damage, t.type);
+                    applyDamage(target, damage, t.type, node);
                     ctx.strokeStyle = t.color; ctx.lineWidth = 2 + node.lvl;
                     ctx.beginPath(); ctx.moveTo(node.x, node.y); ctx.lineTo(target.x, target.y); ctx.stroke();
                 } else if(t.type === 'emp' || t.type === 'blackhole') {
                     targets.forEach(e => {
-                        if(t.type === 'emp') { 
-                            e.stunTimer = e.boss ? Math.floor(t.time * node.lvl * 0.3) : t.time * node.lvl; // ボスはスタン時間軽減
-                            applyDamage(e, damage, t.type);
-                        }
-                        if(t.type === 'blackhole' && !e.boss) { // ボスはブラックホール無効
-                            e.pullX = node.x; e.pullY = node.y; e.pullForce = t.pullForce + (node.lvl*0.5); 
-                        }
+                        if(t.type === 'emp') { e.stunTimer = e.boss ? Math.floor(t.time * node.lvl * 0.3) : t.time * node.lvl; applyDamage(e, damage, t.type, node); }
+                        if(t.type === 'blackhole' && !e.boss) { e.pullX = node.x; e.pullY = node.y; e.pullForce = t.pullForce + (node.lvl*0.5); }
                     });
                     ctx.strokeStyle = t.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(node.x, node.y, range, 0, Math.PI*2); ctx.stroke();
                 } else if(t.type === 'chain') {
                     let currentTarget = target;
                     let hitEnemies = new Set([currentTarget]);
-                    applyDamage(currentTarget, damage, t.type);
+                    applyDamage(currentTarget, damage, t.type, node);
                     let lastX = node.x, lastY = node.y;
                     let chains = t.chainCount + node.lvl - 1;
-                    
                     ctx.strokeStyle = t.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(lastX, lastY);
-                    
                     for(let i=0; i<chains; i++) {
                         ctx.lineTo(currentTarget.x, currentTarget.y);
                         let nextTargets = gameState.enemies.filter(e => !hitEnemies.has(e) && getDist(currentTarget, e) <= 100);
@@ -808,7 +857,7 @@ function gameLoop() {
                             nextTargets.sort((a,b) => getDist(currentTarget, a) - getDist(currentTarget, b));
                             currentTarget = nextTargets[0];
                             hitEnemies.add(currentTarget);
-                            applyDamage(currentTarget, damage * 0.8, t.type);
+                            applyDamage(currentTarget, damage * 0.8, t.type, node);
                         } else break;
                     }
                     ctx.stroke();
@@ -816,50 +865,68 @@ function gameLoop() {
                     const count = t.count + node.lvl - 1;
                     for(let i=0; i<count; i++) {
                         let offsetAngle = angle + (i - count/2) * t.spread;
-                        gameState.bullets.push({x:node.x, y:node.y, vx:Math.cos(offsetAngle)*8, vy:Math.sin(offsetAngle)*8, dmg:damage, type:t.type, color:t.color, tData:t, lvl:node.lvl });
+                        gameState.bullets.push({x:node.x, y:node.y, vx:Math.cos(offsetAngle)*8, vy:Math.sin(offsetAngle)*8, dmg:damage, type:t.type, color:t.color, tData:t, lvl:node.lvl, sourceNode: node });
                     }
                 } else {
-                    gameState.bullets.push({x:node.x, y:node.y, vx:Math.cos(angle)*8, vy:Math.sin(angle)*8, dmg:damage, type:t.type, color:t.color, target:target, tData:t, lvl:node.lvl });
+                    gameState.bullets.push({x:node.x, y:node.y, vx:Math.cos(angle)*8, vy:Math.sin(angle)*8, dmg:damage, type:t.type, color:t.color, target:target, tData:t, lvl:node.lvl, sourceNode: node });
                 }
-                
                 node.cd = Math.max(1, (60 / t.rate) * buffs.rateMult * Math.pow(0.95, node.lvl - 1));
             }
         }
     });
 
-    // --- 弾の処理 ---
     for(let i = gameState.bullets.length - 1; i >= 0; i--) {
         let b = gameState.bullets[i];
         
+        // 🧲 MAGNETギミック（軌道が曲がる）
+        let closestMagnet = magnets.find(m => getDist(b, m) <= m.magnetRange);
+        if(closestMagnet && b.type !== 'homing') {
+            let angleToMagnet = Math.atan2(closestMagnet.y - b.y, closestMagnet.x - b.x);
+            b.vx += Math.cos(angleToMagnet) * 1.5; // 吸い寄せる力
+            b.vy += Math.sin(angleToMagnet) * 1.5;
+            // スピードを一定に保つ
+            let currentSpeed = Math.hypot(b.vx, b.vy);
+            b.vx = (b.vx / currentSpeed) * 8;
+            b.vy = (b.vy / currentSpeed) * 8;
+        }
+
         if(b.type === 'homing' && b.target && b.target.hp > 0) {
             let angle = Math.atan2(b.target.y - b.y, b.target.x - b.x);
             b.vx = Math.cos(angle)*6; b.vy = Math.sin(angle)*6;
         }
-        
         b.x += b.vx; b.y += b.vy;
         
-        ctx.fillStyle = b.color;
-        ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
-
+        ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
         if(b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) { gameState.bullets.splice(i, 1); continue; }
 
         for(let j = 0; j < gameState.enemies.length; j++) {
             let e = gameState.enemies[j];
             if(getDist(b, e) < e.radius + 4) {
+                if(e.dodge > 0 && Math.random() < e.dodge && !['splash','percent'].includes(b.type)) {
+                    ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText('MISS', e.x, e.y - 15);
+                    gameState.bullets.splice(i, 1);
+                    break;
+                }
+
+                // 💉 ABSORBERギミック（エネルギー・魔法以外は回復）
+                if(e.absorb && !['laser', 'plasma', 'splash', 'poison'].includes(b.type)) {
+                    e.hp = Math.min(e.maxHp, e.hp + 10);
+                    ctx.fillStyle = '#00ff00'; ctx.font = '12px Arial'; ctx.fillText('+10', e.x, e.y - 15);
+                    gameState.bullets.splice(i, 1);
+                    break;
+                }
+
                 if(b.type === 'splash') {
                     const radius = b.tData.radius + b.lvl * 5;
-                    gameState.enemies.forEach(ae => { 
-                        if(getDist(b, ae) <= radius) applyDamage(ae, b.dmg, b.type); 
-                    });
+                    gameState.enemies.forEach(ae => { if(getDist(b, ae) <= radius) applyDamage(ae, b.dmg, b.type, b.sourceNode); });
                     ctx.fillStyle = 'rgba(255,85,0,0.5)'; ctx.beginPath(); ctx.arc(b.x, b.y, radius, 0, Math.PI*2); ctx.fill();
                 } else {
-                    if(b.type === 'percent') applyDamage(e, e.maxHp * (b.tData.pct * Math.pow(1.1, b.lvl - 1)), b.type);
-                    else applyDamage(e, b.dmg, b.type);
+                    if(b.type === 'percent') applyDamage(e, e.maxHp * (b.tData.pct * Math.pow(1.1, b.lvl - 1)), b.type, b.sourceNode);
+                    else applyDamage(e, b.dmg, b.type, b.sourceNode);
                     
                     if(b.type === 'slow') { e.slowTimer = e.boss ? Math.floor(b.tData.time*0.5) : b.tData.time; e.slowFactor = Math.max(0.1, b.tData.factor - (b.lvl*0.02)); }
                     if(b.type === 'poison') { e.poisonTimer = b.tData.dotTime; e.poisonDmg = b.tData.dot * b.lvl; }
                 }
-                
                 for(let k=0;k<5;k++) gameState.particles.push({x:b.x, y:b.y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4, life:1, color:b.color, size:2});
                 gameState.bullets.splice(i, 1);
                 break;
@@ -867,15 +934,10 @@ function gameLoop() {
         }
     }
 
-    // --- 敵の処理 ---
     for(let i = gameState.enemies.length - 1; i >= 0; i--) {
         let e = gameState.enemies[i];
         
-        // 再生能力 (REGEN) の処理
-        if(e.regen > 0 && e.hp < e.maxHp) {
-            e.hp += (e.maxHp * e.regen) / 60; // 毎フレーム少しずつ回復
-            if(e.hp > e.maxHp) e.hp = e.maxHp;
-        }
+        if(e.regen > 0 && e.hp < e.maxHp) { e.hp += (e.maxHp * e.regen) / 60; if(e.hp > e.maxHp) e.hp = e.maxHp; }
 
         if(e.stunTimer > 0) { e.stunTimer--; }
         else {
@@ -884,90 +946,65 @@ function gameLoop() {
             
             if(e.pullX !== null && e.pullY !== null) {
                 let pa = Math.atan2(e.pullY - e.y, e.pullX - e.x);
-                e.x += Math.cos(pa) * e.pullForce;
-                e.y += Math.sin(pa) * e.pullForce;
-                e.pullForce *= 0.9;
+                e.x += Math.cos(pa) * e.pullForce; e.y += Math.sin(pa) * e.pullForce; e.pullForce *= 0.9;
                 if(e.pullForce < 0.1) { e.pullX = null; e.pullY = null; }
             } else {
                 let angle = Math.atan2(corePos.y - e.y, corePos.x - e.x);
-                e.x += Math.cos(angle) * currentSpeed;
-                e.y += Math.sin(angle) * currentSpeed;
+                e.x += Math.cos(angle) * currentSpeed; e.y += Math.sin(angle) * currentSpeed;
             }
         }
 
-        if(e.poisonTimer > 0) {
-            e.poisonTimer--;
-            if(e.poisonTimer % 30 === 0) applyDamage(e, e.poisonDmg, 'poison'); // 毒はバリアや装甲を無視する
-        }
+        if(e.poisonTimer > 0) { e.poisonTimer--; if(e.poisonTimer % 30 === 0) applyDamage(e, e.poisonDmg, 'poison'); }
 
-        // コア到達
         if(getDist(e, corePos) < 25 + e.radius) {
-            gameState.coreHp -= e.hp;
-            updateBattleUI();
+            gameState.coreHp -= e.hp; updateBattleUI();
             for(let k=0;k<10;k++) gameState.particles.push({x:corePos.x, y:corePos.y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, life:1, color:'#ff0000', size:4});
             gameState.enemies.splice(i, 1);
             if(gameState.coreHp <= 0) { gameOver(); return; }
             continue;
         }
 
-        // 死亡
         if(e.hp <= 0) {
-            gameState.coins += e.boss ? 150 : (10 + gameState.wave);
-            const crystalDropChance = e.boss ? 1.0 : 0.2; // ボスは100%ドロップ
-            if(Math.random() < crystalDropChance) {
-                const crystalBonus = 1 + (metaState.upgrades.crystal_gain || 0) * 0.1;
-                gameState.earnedCrystalsThisRun += Math.ceil((e.boss ? 10 : 1) * crystalBonus);
+            if(e.splits > 0) {
+                for(let s=0; s<e.splits; s++) spawnEnemy('slime_child', e.x - corePos.x + (Math.random()-0.5)*20, e.y - corePos.y + (Math.random()-0.5)*20);
             }
+
+            gameState.coins += e.boss ? 150 : (10 + gameState.wave);
+            const crystalDropChance = e.boss ? 1.0 : 0.2;
+            if(Math.random() < crystalDropChance) gameState.earnedCrystalsThisRun += Math.ceil((e.boss ? 10 : 1) * (1 + (metaState.upgrades.crystal_gain || 0) * 0.1));
+            
             for(let k=0;k< (e.boss ? 30 : 8);k++) gameState.particles.push({x:e.x, y:e.y, vx:(Math.random()-0.5)*5, vy:(Math.random()-0.5)*5, life:1, color:'#fff', size:3});
             gameState.enemies.splice(i, 1);
             updateBattleUI();
         } else {
-            // 敵の描画
             ctx.fillStyle = e.stunTimer > 0 ? '#aaaaaa' : (e.poisonTimer > 0 ? '#00ff00' : (e.slowTimer > 0 ? '#00ffff' : e.color));
-            
-            // TANK（装甲）の場合は四角く描画、それ以外は丸
             ctx.beginPath();
-            if(e.armor > 0) {
-                ctx.rect(e.x - e.radius, e.y - e.radius, e.radius*2, e.radius*2);
-            } else {
-                ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
-            }
+            if(e.armor > 0) ctx.rect(e.x - e.radius, e.y - e.radius, e.radius*2, e.radius*2);
+            else ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
             ctx.fill();
 
-            // SHIELD（バリア）持ちの場合は青いオーラを描画
-            if(e.shieldHits > 0) {
-                ctx.strokeStyle = '#0088ff'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(e.x, e.y, e.radius + 4, 0, Math.PI*2); ctx.stroke();
-            }
+            if(e.shieldHits > 0) { ctx.strokeStyle = '#0088ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, e.radius + 4, 0, Math.PI*2); ctx.stroke(); }
+            if(e.jamRange > 0) { ctx.strokeStyle = 'rgba(255, 170, 0, 0.3)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(e.x, e.y, e.jamRange, 0, Math.PI*2); ctx.stroke(); }
+            if(e.magnetRange > 0) { ctx.strokeStyle = 'rgba(34, 34, 34, 0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(e.x, e.y, e.magnetRange, 0, Math.PI*2); ctx.stroke(); }
+            if(e.boss) { ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x, e.y, e.radius + 8 + Math.sin(frame*0.1)*2, 0, Math.PI*2); ctx.stroke(); }
 
-            // ボス専用エフェクト
-            if(e.boss) {
-                ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 3;
-                ctx.beginPath(); ctx.arc(e.x, e.y, e.radius + 8 + Math.sin(frame*0.1)*2, 0, Math.PI*2); ctx.stroke();
-            }
-
-            // HPバー
             ctx.fillStyle = '#f00'; ctx.fillRect(e.x - 10, e.y - 15 - (e.boss?10:0), 20, 3);
             ctx.fillStyle = '#0f0'; ctx.fillRect(e.x - 10, e.y - 15 - (e.boss?10:0), 20 * (e.hp/e.maxHp), 3);
         }
     }
 
-    // --- パーティクルの処理 ---
     for(let i = gameState.particles.length - 1; i >= 0; i--) {
         let p = gameState.particles[i];
         p.x += p.vx; p.y += p.vy; p.life -= 0.05;
         if(p.life <= 0) { gameState.particles.splice(i, 1); continue; }
-        ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
     }
 
     frame++;
     if(window.loopActive) requestAnimationFrame(gameLoop);
 }
 
-// ゲームオーバー処理
 function gameOver() {
     window.loopActive = false;
     document.getElementById('resWave').innerText = gameState.wave;
